@@ -1,0 +1,17 @@
+# Sasha Agent Configuration
+# Fill in your actual API keys and tokens below. Do NOT commit this file to public repos.
+
+discord:
+  bot_token: "MTM3NzQzNTg4NDcwOTc0NDY4MA.GAPeVQ.ewzN7PbTxlqG6izQ7I40iI7579g_9fjcSV-9ts"
+  guild_id: "1325901191846035580"
+  channel_id: "1377298299446493245"
+
+gcp:
+  project_id: "agentecos-1748475661"
+  service_account_json: "path/to/your/service-account.json"
+
+google:
+  api_key: "AIzaSyDyZUctzIdmA83b8oDYggmYBFRw07M-UXk"
+
+huggingface:
+  api_key: "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" 

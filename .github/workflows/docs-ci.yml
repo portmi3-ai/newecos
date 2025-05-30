@@ -1,0 +1,42 @@
+name: Docs CI
+
+on:
+  push:
+    paths:
+      - 'docs/**.md'
+      - 'scripts/sync_docs_to_server.py'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  lint-and-sync-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Lint Markdown files
+        run: |
+          pip install markdownlint-cli
+          markdownlint docs/**/*.md || true
+
+      - name: Install requests
+        run: pip install requests
+
+      - name: Sync docs to server
+        env:
+          DOCS_API_URL: ${{ secrets.DOCS_API_URL }}
+          DOCS_API_KEY: ${{ secrets.DOCS_API_KEY }}
+        run: |
+          python scripts/sync_docs_to_server.py
+
+      # - name: Trigger agent knowledge refresh (optional)
+      #   run: |
+      #     curl -X POST ${{ secrets.AGENT_REFRESH_URL }} 

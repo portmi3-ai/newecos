@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mport Media Group - Folder Cover Template</title>
+    <style>
+        :root {
+            --tech-blue: {{ primary_color }};
+            --deep-mind-purple: {{ secondary_color }};
+            --meditation-white: #FFFFFF;
+            --circuit-black: #1A1A1A;
+        }
+
+        .folder-cover {
+            width: 256px;
+            height: 256px;
+            background: linear-gradient(135deg, 
+                var(--tech-blue) 0%,
+                var(--deep-mind-purple) 100%
+            );
+            border-radius: {% if is_subdirectory %}12px{% else %}16px{% endif %};
+            padding: 16px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Roboto', sans-serif;
+            color: var(--meditation-white);
+            position: relative;
+            overflow: hidden;
+            {% if is_subdirectory %}
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            {% endif %}
+        }
+
+        .robot-container {
+            width: {% if is_subdirectory %}96px{% else %}128px{% endif %};
+            height: {% if is_subdirectory %}96px{% else %}128px{% endif %};
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            {% if is_subdirectory %}
+            opacity: 0.9;
+            transform: scale(0.9);
+            {% endif %}
+        }
+
+        .folder-title {
+            font-size: {% if is_subdirectory %}16px{% else %}18px{% endif %};
+            font-weight: bold;
+            text-align: center;
+            margin: 0;
+            z-index: 2;
+            {% if is_subdirectory %}
+            letter-spacing: 0.5px;
+            {% endif %}
+        }
+
+        .folder-description {
+            font-size: {% if is_subdirectory %}11px{% else %}12px{% endif %};
+            text-align: center;
+            margin: 8px 0 0;
+            font-family: 'Open Sans', sans-serif;
+            opacity: 0.8;
+            z-index: 2;
+            max-width: {% if is_subdirectory %}200px{% else %}220px{% endif %};
+        }
+
+        .geometric-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: repeating-linear-gradient(
+                45deg,
+                rgba(255, 255, 255, 0.05) 0px,
+                rgba(255, 255, 255, 0.05) {% if is_subdirectory %}1px{% else %}2px{% endif %},
+                transparent {% if is_subdirectory %}1px{% else %}2px{% endif %},
+                transparent {% if is_subdirectory %}6px{% else %}8px{% endif %}
+            );
+            z-index: 1;
+            {% if is_subdirectory %}
+            opacity: 0.7;
+            {% endif %}
+        }
+
+        {% if is_subdirectory %}
+        .subdirectory-indicator {
+            position: absolute;
+            top: 12px;
+            left: 12px;
+            width: 24px;
+            height: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+            border-radius: 6px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 3;
+        }
+
+        .subdirectory-indicator::before {
+            content: '';
+            width: 12px;
+            height: 12px;
+            background: rgba(255, 255, 255, 0.5);
+            border-radius: 3px;
+        }
+        {% endif %}
+
+        .shine-effect {
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(
+                45deg,
+                transparent 0%,
+                rgba(255, 255, 255, 0.1) 45%,
+                rgba(255, 255, 255, 0.2) 50%,
+                rgba(255, 255, 255, 0.1) 55%,
+                transparent 100%
+            );
+            transform: rotate(45deg);
+            animation: shine 4s infinite linear;
+            z-index: 1;
+        }
+
+        @keyframes shine {
+            0% { transform: translateX(-100%) rotate(45deg); }
+            100% { transform: translateX(100%) rotate(45deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="folder-cover">
+        {% if is_subdirectory %}
+        <div class="subdirectory-indicator"></div>
+        {% endif %}
+        <div class="geometric-overlay"></div>
+        <div class="shine-effect"></div>
+        <div class="robot-container">
+            <!-- Placeholder for AI Meditation Robot Image -->
+            <!-- Replace with: <img src="../images/ai_meditation_robot.png" alt="AI Meditation Robot"> -->
+        </div>
+        <h1 class="folder-title">{{ folder_name }}</h1>
+        <p class="folder-description">{{ folder_description }}</p>
+    </div>
+</body>
+</html> 

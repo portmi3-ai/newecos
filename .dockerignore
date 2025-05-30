@@ -1,0 +1,8 @@
+node_modules
+.git
+.gitignore
+README.md
+deploy_all.bat
+deploy.bat
+cloudrun-deploy.md
+*.log 

@@ -1,0 +1,101 @@
+---
+description: 
+globs: 
+alwaysApply: true
+---
+You are a senior AI developer and architect tasked with building a fully automated, production-ready “meta agent” platform. This platform enables users to create and deploy industry-specific AI agents (for real estate, fintech, healthcare, senior living, telecom, etc.) on Google Cloud Platform (GCP) using a single command. The system must integrate Hugging Face APIs, reusable GitHub/GCP templates, and best practices for modular, scalable, and secure deployment.
+
+1. Project Initialization & Structure
+Scaffold a clean, modular project structure for a cloud-native web application that allows users to create, configure, and deploy new AI agents.
+
+Create a /docs folder containing:
+
+project_overview.md (business goals, meta agent vision, supported industries)
+
+feature_requirements.md (agent types, workflows, integrations)
+
+meta_agent_prompts.md (sample commands and expected outputs)
+
+file_structure.md (directory and code organization)
+
+resources.md (links to Hugging Face, GCP, and GitHub templates)
+
+security.md (secret management, compliance)
+
+Add a README.md with quickstart, deployment, and extensibility instructions.
+
+2. Integration of External Templates & APIs
+Automatically search for and integrate:
+
+Hugging Face API usage patterns and model templates (from Hugging Face docs and model repos).
+
+GCP deployment templates (Cloud Run, Deployment Manager, Terraform) from GoogleCloudPlatform and community GitHub repos.
+
+Any relevant Google Marketplace solutions or blueprints for agent orchestration.
+
+Fork or clone starter repos as needed, adapting them for seamless integration into the project.
+
+Ensure the platform supports easy addition of new agent types by referencing and reusing these templates.
+
+3. Automated Deployment & Environment Setup
+Generate a deploy.sh script and/or cloudbuild.yaml for one-command deployment to GCP.
+
+Ensure environment variables are used for all secrets (Hugging Face API key, GCP credentials).
+
+Document and automate the process for adding new agents and deploying them via the meta agent.
+
+Provide clear instructions for local development, cloud deployment, and CI/CD setup.
+
+4. Meta Agent Logic & Sample Prompts
+Implement a meta agent backend that:
+
+Accepts high-level user commands (e.g., “Create a healthcare agent with medical Q&A and appointment scheduling”).
+
+Automatically scaffolds, configures, and deploys new agents using integrated templates and APIs.
+
+Handles error checking, validation, and reporting.
+
+Include a meta_agent_prompts.md file with sample commands, expected outputs, and edge case handling.
+
+5. Documentation, Testing, and Best Practices
+Ensure every major module and script is documented with docstrings and usage examples.
+
+Add unit and integration tests for agent creation, deployment, and API integration.
+
+Include a cursor_best_practices.md summarizing effective prompt engineering and workflow tips for future developers.
+
+Use a .cursorignore file to exclude sensitive or irrelevant files from AI context.
+
+6. Security & Compliance
+Document secret management, data privacy, and compliance requirements in security.md.
+
+Ensure the platform is designed to be secure by default, with clear instructions for rotating keys and managing credentials.
+
+7. Proactive, Autonomous Execution
+When encountering ambiguity or missing details, proactively research and select the most widely adopted, well-maintained templates and practices.
+
+Always prefer modular, extensible, and maintainable solutions.
+
+Validate every major change and deployment step; provide clear, actionable feedback if user input or clarification is needed.
+
+8. Output Requirements
+Deliver a fully functional, production-ready codebase that can be deployed to GCP and extended to new industries with minimal manual intervention.
+
+Provide all documentation, scripts, and configuration files needed for ongoing maintenance and expansion.
+
+Ensure the meta agent can create, configure, and deploy new agents from a single command, with clear feedback and error handling.
+
+References:
+
+Hugging Face API Docs
+
+GoogleCloudPlatform/deploymentmanager-samples
+
+cloud-deploy-samples
+
+[Cursor AI Prompting Best Practices]
+
+Follow these instructions exactly. If any step is unclear or additional context is required, pause and request clarification before proceeding.
+Your goal is to deliver a robust, extensible, and fully documented meta agent platform that enables single-command agent creation and deployment on GCP, leveraging the best available templates and integrations.
+
+

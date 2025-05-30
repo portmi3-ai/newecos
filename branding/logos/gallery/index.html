@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mport Media Group - Logo Gallery</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@400;500;700&family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --tech-blue: #2B7BE9;
+            --deep-mind-purple: #6B46C1;
+            --zen-gray: #E5E7EB;
+            --mindful-teal: #2DD4BF;
+            --focus-amber: #F59E0B;
+            --growth-emerald: #10B981;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Open Sans', sans-serif;
+            background: #f8fafc;
+            color: #1a1a1a;
+            line-height: 1.6;
+        }
+
+        header {
+            background: linear-gradient(135deg, var(--tech-blue), var(--deep-mind-purple));
+            color: white;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        h1 {
+            font-family: 'Roboto', sans-serif;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .gallery-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 0.5rem;
+            background: white;
+            color: var(--tech-blue);
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            border: 1px solid var(--tech-blue);
+        }
+
+        .filter-btn.active {
+            background: var(--tech-blue);
+            color: white;
+        }
+
+        .filter-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 2rem;
+        }
+
+        .logo-card {
+            background: white;
+            border-radius: 1rem;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: all 0.3s ease;
+        }
+
+        .logo-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 12px rgba(0, 0, 0, 0.15);
+        }
+
+        .logo-preview {
+            width: 100%;
+            height: 300px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .logo-preview img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .logo-info {
+            padding: 1.5rem;
+            border-top: 1px solid var(--zen-gray);
+        }
+
+        .logo-title {
+            font-family: 'Roboto', sans-serif;
+            font-size: 1.25rem;
+            margin-bottom: 0.5rem;
+            color: var(--deep-mind-purple);
+        }
+
+        .logo-meta {
+            font-size: 0.875rem;
+            color: #666;
+            margin-bottom: 1rem;
+        }
+
+        .logo-tags {
+            display: flex;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+        }
+
+        .tag {
+            padding: 0.25rem 0.75rem;
+            background: var(--zen-gray);
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            color: #444;
+        }
+
+        .version-badge {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: var(--mindful-teal);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .gallery-grid {
+                grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                gap: 1rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Mport Media Group Logo Gallery</h1>
+        <p>Browse and compare logo variations</p>
+    </header>
+
+    <div class="container">
+        <div class="gallery-controls">
+            <button class="filter-btn active" data-filter="all">All</button>
+            <button class="filter-btn" data-filter="geometric">Geometric</button>
+            <button class="filter-btn" data-filter="ai-generated">AI Generated</button>
+            <button class="filter-btn" data-filter="latest">Latest Versions</button>
+        </div>
+
+        <div class="gallery-grid" id="logoGallery">
+            <!-- Logo cards will be dynamically inserted here -->
+        </div>
+    </div>
+
+    <script>
+        // Function to load logo metadata and create gallery
+        async function loadGallery() {
+            try {
+                const response = await fetch('../variations/metadata_index.json');
+                const logos = await response.json();
+                
+                const gallery = document.getElementById('logoGallery');
+                gallery.innerHTML = '';
+
+                logos.forEach(logo => {
+                    const card = createLogoCard(logo);
+                    gallery.appendChild(card);
+                });
+            } catch (error) {
+                console.error('Error loading gallery:', error);
+            }
+        }
+
+        // Function to create a logo card
+        function createLogoCard(logo) {
+            const card = document.createElement('div');
+            card.className = 'logo-card';
+            card.dataset.category = logo.logo_info.category;
+
+            card.innerHTML = `
+                <div class="logo-preview">
+                    <img src="../previews/preview_${logo.logo_info.file_name}" alt="${logo.logo_info.file_name}">
+                </div>
+                <div class="logo-info">
+                    <h3 class="logo-title">${logo.logo_info.style || 'Logo Design'}</h3>
+                    <div class="logo-meta">
+                        <div>Version ${logo.logo_info.version}</div>
+                        <div>Created: ${new Date(logo.logo_info.date_created).toLocaleDateString()}</div>
+                    </div>
+                    <div class="logo-tags">
+                        ${logo.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                    </div>
+                </div>
+            `;
+
+            return card;
+        }
+
+        // Filter functionality
+        document.querySelectorAll('.filter-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const filter = button.dataset.filter;
+                
+                // Update active button
+                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+
+                // Filter logos
+                document.querySelectorAll('.logo-card').forEach(card => {
+                    if (filter === 'all' || card.dataset.category === filter) {
+                        card.style.display = 'block';
+                    } else if (filter === 'latest') {
+                        // Show only the latest version of each style
+                        // Implementation depends on version tracking system
+                        card.style.display = 'block';
+                    } else {
+                        card.style.display = 'none';
+                    }
+                });
+            });
+        });
+
+        // Load gallery on page load
+        document.addEventListener('DOMContentLoaded', loadGallery);
+    </script>
+</body>
+</html> 

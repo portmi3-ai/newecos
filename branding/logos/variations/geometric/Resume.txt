@@ -1,0 +1,87 @@
+Absolutely — below is your **fully revised, ATS-optimized, professional resume** in clean formatting with **bullet points**, no emojis or checkmarks, and language aligned with **executive and technical AI consulting leadership**.
+
+---
+
+# **MICHAEL PORTER**  
+Portage, MI 49024  
+(269) 216-1147 | mportmedia@gmail.com  
+linkedin.com/in/mportin  
+
+---
+
+### **REGIONAL VICE PRESIDENT | INSIDE SALES | AI CONSULTING & TECHNOLOGY LEADERSHIP**  
+Executive leader with over 30 years of experience scaling high-performance inside sales organizations and building AI-driven digital solutions for the healthcare, finance, education, and public sectors. Proven ability to lead remote, cross-functional teams while integrating CRM optimization, AI-enabled process automation, and consultative B2C sales. Strong track record of generating 12–30% annual revenue growth, driving government procurement success, and enabling small businesses with intelligent software solutions.
+
+---
+
+### **CORE COMPETENCIES**  
+- Inside Sales Leadership & Remote Team Management  
+- AI Agent Development & Machine Learning Integration  
+- KPI Tracking, Revenue Growth & Performance Analytics  
+- CRM Optimization: Salesforce, HubSpot, Custom Platforms  
+- Web Application Development (Supabase, React, Postgres)  
+- AI Tools: PyTorch, TensorFlow, OpenAI, LangChain  
+- Strategic Partnerships & Referral Channel Development  
+- Government Procurement & FAR Compliance  
+- Agile Coaching, Change Management & Process Innovation  
+
+---
+
+### **PROFESSIONAL EXPERIENCE**
+
+#### **Founder & CEO** – Mport Media Group  
+Portage, MI | Mar 2003 – Present  
+Founded an AI consulting and government procurement firm that develops AI agents, CRM workflows, and full-stack web applications for small businesses and federal clients.
+
+- Designed and implemented AI-driven sales agents, predictive workflows, and CRM automation tools using PyTorch, TensorFlow, and OpenAI.  
+- Built and deployed scalable web apps and analytics dashboards using Supabase, React, and Postgres for clients in healthcare, finance, and education.  
+- Scaled a remote Agile team of 15+ engineers, designers, and project managers, increasing project velocity by 45% and maintaining 95%+ client retention.  
+- Advised clients on inside sales process optimization, improving lead conversion by 35% and reducing sales cycle time by 28%.  
+- Built strategic partnerships with federal agencies and mission-aligned private sector clients, achieving 96%+ client satisfaction through delivery excellence.  
+
+#### **Director of Sales** – The Oaks at Battle Creek  
+Battle Creek, MI | Feb 2023 – Dec 2024  
+
+- Led an inside sales team of 8 through daily KPI tracking and one-on-one performance coaching, achieving 12% revenue growth ($1.2M).  
+- Implemented Salesforce dashboards and lead scoring workflows, improving lead conversion by 35%.  
+- Established referral partnerships with 15+ financial advisors, contributing 30% of new business through targeted pipelines.  
+- Maintained 0% turnover by fostering a performance-driven team culture and implementing structured agile coaching practices.  
+
+#### **Sales Counselor** – Northpointe Woods  
+Battle Creek, MI | Jul 2022 – Dec 2022  
+
+- Increased move-ins by 25% through CRM-based referral streamlining and client-focused sales techniques.  
+- Improved conversion rates by 60% through creation of data-informed sales scripts and structured follow-up protocols.  
+
+#### **Branch Manager** – BlueOx Credit Union  
+Kalamazoo, MI | Nov 2020 – Feb 2022  
+
+- Oversaw $25M in assets and delivered 15% production growth through data-driven sales campaigns and CRM automation.  
+- Led a team of 12, increasing productivity by 20% and reducing turnover by 35% through employee development initiatives.  
+- Collaborated with technical teams to improve CRM journey flows and reduce customer engagement drop-off.  
+
+#### **Branch Manager** – Comerica Bank  
+Kalamazoo, MI | Dec 2018 – Aug 2019  
+
+- Exceeded sales targets by 15%, contributing $1.2M in new revenue via outbound sales and client segmentation strategies.  
+- Introduced performance dashboards to increase team visibility and shorten sales cycle timelines by 22%.  
+
+#### **Financial Center Manager** – Fifth Third Bank  
+Kalamazoo, MI | Mar 2015 – Dec 2018  
+
+- Managed $50M in assets while leading the branch to 20% revenue growth through localized outreach and segmentation.  
+- Turned around an underperforming branch, elevating it into a top-10 performer in the district.  
+
+---
+
+### **LEADERSHIP & COMMUNITY IMPACT**
+
+- Board Member – Alzheimer’s Association: Increased donor engagement by 40% through digital outreach and event strategy.  
+- Fundraising Lead – Miles for Memories: Raised over $250K through hybrid campaigns and local sponsorship engagement.  
+
+---
+
+**EDUCATION**
+
+Bachelor of Arts – Western Michigan University | 2002
+

@@ -1,0 +1,81 @@
+name: Deploy to Cloud Run and Firebase Hosting
+
+on:
+  push:
+    branches:
+      - main
+
+permissions:
+  contents: write
+
+jobs:
+  deploy-cloud-run:
+    runs-on: ubuntu-latest
+    env:
+      PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+      GAR_LOCATION: us-central1
+      REPOSITORY: agent-media-site-repo
+      IMAGE: agent-media-site
+      SERVICE: agent-media-site
+      REGION: us-central1
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Write GCP service account key to file
+        run: echo "$GCP_SA_KEY" > $HOME/gcloud-key.json
+        env:
+          GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Set GOOGLE_APPLICATION_CREDENTIALS env var
+        run: echo "GOOGLE_APPLICATION_CREDENTIALS=$HOME/gcloud-key.json" >> $GITHUB_ENV
+
+      # The following inputs are valid for google-github-actions/setup-gcloud@v2
+      # See: https://github.com/google-github-actions/setup-gcloud#inputs
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+
+      - name: Configure Docker for Artifact Registry
+        run: |
+          gcloud auth configure-docker us-central1-docker.pkg.dev
+
+      - name: Build Docker image
+        run: |
+          docker build -t us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/agent-media-site-repo/agent-media-site:latest ./agentecos-main
+
+      - name: Push Docker image
+        run: |
+          docker push us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/agent-media-site-repo/agent-media-site:latest
+
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy agent-media-site \
+            --image=us-central1-docker.pkg.dev/${{ secrets.GCP_PROJECT_ID }}/agent-media-site-repo/agent-media-site:latest \
+            --region=us-central1 \
+            --platform=managed \
+            --allow-unauthenticated 
+
+      - name: Output Cloud Run URL
+        run: |
+          echo "Fetching Cloud Run service URL..."
+          URL=$(gcloud run services describe agent-media-site --region=us-central1 --format='value(status.url)')
+          echo "Cloud Run deployed at: $URL"
+
+  deploy-firebase-hosting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-node@v3
+        with:
+          node-version: '20'
+      - run: npm ci
+      - run: npm run build
+      - run: npm install -g firebase-tools
+      - name: Deploy to Firebase Hosting
+        run: firebase deploy --only hosting --token ${{ secrets.FIREBASE_TOKEN }}
+      - name: Output Firebase Hosting URL
+        run: |
+          echo "Your Firebase Hosting site will be at: https://${{ secrets.GCP_PROJECT_ID }}.web.app or your custom domain if configured." 
