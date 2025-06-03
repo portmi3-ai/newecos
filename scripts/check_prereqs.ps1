@@ -1,5 +1,5 @@
 # Check for .env file
-$envPath = Join-Path $PSScriptRoot '..' 'agentecos-main' '.env'
+$envPath = Join-Path (Join-Path (Join-Path $PSScriptRoot '..') 'agentecos-main') '.env'
 if (-Not (Test-Path $envPath)) {
     Write-Host "[ERROR] .env file not found in agentecos-main/.env. Please create it from .env.example and add your Google OAuth credentials." -ForegroundColor Red
     exit 1
