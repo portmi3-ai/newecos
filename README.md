@@ -30,6 +30,25 @@ The Meta DevOps Agent platform is a cloud-native, AI-driven system designed to a
    - Backend: `npm start` in `agentecos-main`
    - Frontend: `npm start` in `website`
 
+## Automated Documentation & Best Practices
+
+To ensure you always have the latest MCP server directories, integration guides, and best practices:
+
+- **Run the setup script:**
+  - On Linux/Mac: `bash scripts/setup_docs.sh`
+  - On Windows: `./scripts/setup_docs.ps1` (PowerShell)
+- This will:
+  - Download and update all key documentation and guides in `docs/guides/`
+  - Validate all links in `docs/resources.md`
+  - Fetch the latest community news into `docs/news.md`
+  - Print a summary of any issues or broken links
+- **docs/resources.md** is your always-up-to-date index of the best MCP directories, official repos, and integration best practices.
+- **docs/guides/** contains the latest downloaded guides (e.g., FastAPI MCP, Gradio MCP, etc.)
+- **docs/news.md** contains the latest top news from the MCP community (Reddit, MCPshare)
+- **CI/CD:** A GitHub Action runs this validation automatically on every push and daily, so the docs stay fresh for all contributors.
+
+**All new developers should run the setup script after cloning the repo to ensure they have the latest documentation and best practices.**
+
 ## Deployment
 
 - **One-command deploy:**

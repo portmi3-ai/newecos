@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node backend/server.js",
     "test": "jest",
-    "lint": "eslint ."
+    "lint": "eslint .",
+    "start:backend": "cd agentecos-main/backend && npm run start"
   },
   "dependencies": {
     "@google-cloud/logging": "^10.0.0",

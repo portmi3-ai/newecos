@@ -7,11 +7,13 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "start": "vite"
   },
   "dependencies": {
     "@tanstack/react-query": "^5.77.2",
     "@tanstack/react-query-devtools": "^5.77.2",
+    "bcryptjs": "^3.0.2",
     "firebase": "^11.8.1",
     "lucide-react": "^0.511.0",
     "react": "^19.1.0",
