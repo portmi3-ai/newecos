@@ -1,0 +1,54 @@
+name: Docs Validation & Sync
+
+on:
+  push:
+    paths:
+      - 'docs/**'
+      - 'scripts/setup_docs.sh'
+      - 'scripts/setup_docs.ps1'
+      - '.github/workflows/docs-validation.yml'
+  schedule:
+    - cron: '0 3 * * *'
+
+jobs:
+  validate-docs-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y jq pandoc curl
+      - name: Run setup_docs.sh
+        run: bash scripts/setup_docs.sh
+      - name: Upload guides and news
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-guides-news-linux
+          path: |
+            docs/guides
+            docs/news.md
+      - name: Check for broken links
+        run: |
+          if grep -q '\[ERROR\] Broken link:' scripts/setup_docs.sh.log; then
+            echo 'Broken links found!'; exit 1; fi
+      - name: Print summary
+        run: |
+          echo 'Linux docs validation complete.'
+
+  validate-docs-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pandoc
+        run: choco install pandoc -y
+      - name: Run setup_docs.ps1
+        shell: pwsh
+        run: ./scripts/setup_docs.ps1
+      - name: Upload guides and news
+        uses: actions/upload-artifact@v4
+        with:
+          name: docs-guides-news-windows
+          path: |
+            docs/guides
+            docs/news.md
+      - name: Print summary
+        run: echo 'Windows docs validation complete.' 
