@@ -30,6 +30,20 @@ The Meta DevOps Agent platform is a cloud-native, AI-driven system designed to a
    - Backend: `npm start` in `agentecos-main`
    - Frontend: `npm start` in `website`
 
+## Environment Setup
+
+Before running the development environment, you must set up your environment variables:
+
+1. **Copy the example file:**
+   ```sh
+   cp agentecos-main/.env.example agentecos-main/.env
+   ```
+2. **Edit `agentecos-main/.env` and fill in real values** for all required keys (Google OAuth, Auth0, GCP, etc.).
+   - The `.env.example` file documents all required variables and their purpose.
+   - Never commit your real `.env` file to version control.
+
+**If you need more details, see the comments in `.env.example`.**
+
 ## Automated Documentation & Best Practices
 
 To ensure you always have the latest MCP server directories, integration guides, and best practices:
