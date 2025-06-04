@@ -23,6 +23,9 @@ import { requestLogger } from './middleware/loggerMiddleware.js';
 // Configuration
 dotenv.config();
 
+// Debug: Print all loaded environment variables (for troubleshooting .env loading)
+console.log('Loaded environment variables:', Object.keys(process.env).filter(k => k.includes('AUTH') || k.includes('GOOGLE')).reduce((obj, k) => { obj[k] = process.env[k]; return obj; }, {}));
+
 // Initialize Express app
 const app = express();
 const port = process.env.PORT || 8080; // Use 8080 for Cloud Run compatibility
