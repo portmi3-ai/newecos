@@ -28,10 +28,11 @@ if __name__ == '__main__':
     if check_environment():
         try:
             logging.info("Starting Sasha AI server...")
+            port = int(os.getenv('PORT', 8000))
             uvicorn.run(
                 app,
                 host='0.0.0.0',
-                port=8000,
+                port=port,
                 log_level="info"
             )
         except Exception as e:

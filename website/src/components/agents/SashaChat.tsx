@@ -11,16 +11,15 @@ const SashaChat: React.FC = () => {
     setChat([...chat, { sender: 'user', text: message }]);
     setIsSending(true);
     try {
-      const response = await fetch('/api/meta-devops/command', {
+      const response = await fetch('http://localhost:8001/chat', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          // TODO: Add Authorization header if needed
         },
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message, session_id: 'frontend-session' }),
       });
       const data = await response.json();
-      setChat(prev => [...prev, { sender: 'sasha', text: data.reply || 'Sasha did not respond.' }]);
+      setChat(prev => [...prev, { sender: 'sasha', text: data.response || 'Sasha did not respond.' }]);
     } catch (err) {
       setChat(prev => [...prev, { sender: 'sasha', text: 'Sorry, I could not reach the server.' }]);
     }
