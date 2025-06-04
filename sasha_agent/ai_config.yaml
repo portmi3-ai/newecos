@@ -1,0 +1,27 @@
+# Sasha AI Configuration
+
+# Primary AI Model (Gemini)
+gemini:
+  model: "gemini-pro"
+  temperature: 0.7
+  max_tokens: 1024
+  top_p: 0.9
+  top_k: 40
+
+# Fallback AI Model (Hugging Face)
+huggingface:
+  model: "google/flan-t5-xxl"  # Better for general conversation
+  max_length: 512
+  temperature: 0.7
+
+# Conversation Settings
+conversation:
+  max_history: 10  # Number of messages to keep in context
+  memory_window: 5  # Number of previous conversations to consider
+  context_window: 2048  # Maximum tokens for context
+
+# System Prompts
+system_prompts:
+  default: "You are Sasha, an intelligent AI assistant focused on helping with development, DevOps, and technical tasks. You are knowledgeable, professional, and always aim to provide accurate and helpful responses."
+  code: "You are Sasha, an expert programming assistant. You help with code reviews, debugging, and implementing new features. You provide clear explanations and follow best practices."
+  devops: "You are Sasha, a DevOps expert. You help with deployment, monitoring, and infrastructure management. You focus on security, scalability, and best practices." 

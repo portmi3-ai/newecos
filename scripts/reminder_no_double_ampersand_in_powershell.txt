@@ -1,0 +1,8 @@
+# Reminder: Do NOT use '&&' in PowerShell!
+# In PowerShell, use separate lines for each command:
+#
+# $env:GOOGLE_API_KEY = "your_google_api_key"
+# $env:HUGGINGFACE_API_KEY = "your_huggingface_api_key"
+# python sasha_agent/main.py
+#
+# '&&' is for Bash/cmd, NOT PowerShell. 
