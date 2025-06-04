@@ -64,9 +64,7 @@ Add unit and integration tests for agent creation, deployment, and API integrati
 
 Include a cursor_best_practices.md summarizing effective prompt engineering and workflow tips for future developers.
 
-Use a .cursorignore file to exclude sensitive or irrelevant files from AI context.
-
-6. Security & Compliance
+1. Security & Compliance
 Document secret management, data privacy, and compliance requirements in security.md.
 
 Ensure the platform is designed to be secure by default, with clear instructions for rotating keys and managing credentials.
