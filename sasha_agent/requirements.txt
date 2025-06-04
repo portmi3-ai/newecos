@@ -1,0 +1,6 @@
+pyyaml
+discord.py
+fastapi
+uvicorn
+google-cloud
+requests 
