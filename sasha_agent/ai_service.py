@@ -37,6 +37,14 @@ class AIService:
 
         # Initialize Gemini
         genai.configure(api_key=os.getenv('GOOGLE_API_KEY'))
+        try:
+            models = genai.list_models()
+            logging.info('Available Gemini models:')
+            for model in models:
+                logging.info(f"- {model.name} (supported methods: {getattr(model, 'supported_generation_methods', 'N/A')})")
+        except Exception as e:
+            logging.warning(f"Could not list Gemini models: {e}")
+
         self.gemini_model = genai.GenerativeModel(
             model_name=self.config['gemini']['model'],
             generation_config={
@@ -91,7 +99,8 @@ class AIService:
             raise Exception("Empty response from Gemini")
             
         except Exception as e:
-            logging.warning(f"Gemini failed: {str(e)}. Falling back to Hugging Face.")
+            import traceback
+            logging.warning(f"Gemini failed: {str(e)}\nTraceback: {traceback.format_exc()}")
             
             try:
                 # Fallback to Hugging Face
@@ -104,10 +113,10 @@ class AIService:
                     conversation.add_message("assistant", hf_response)
                     return hf_response
                     
-                raise Exception("Invalid response from Hugging Face")
+                raise Exception(f"Invalid response from Hugging Face: {hf_response}")
                 
             except Exception as hf_error:
-                logging.error(f"Both AI services failed: {str(hf_error)}")
+                logging.error(f"Both AI services failed: {str(hf_error)}\nTraceback: {traceback.format_exc()}")
                 fallback_response = "I apologize, but I'm having trouble processing your request right now. Please try again in a moment."
                 conversation.add_message("assistant", fallback_response)
                 return fallback_response

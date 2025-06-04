@@ -2,7 +2,8 @@
 
 # Primary AI Model (Gemini)
 gemini:
-  model: "gemini-pro"
+  # Use 'models/gemini-1.5-pro-latest' for best compatibility and performance.
+  model: "models/gemini-1.5-pro-latest"
   temperature: 0.7
   max_tokens: 1024
   top_p: 0.9
@@ -10,7 +11,8 @@ gemini:
 
 # Fallback AI Model (Hugging Face)
 huggingface:
-  model: "google/flan-t5-xxl"  # Better for general conversation
+  # Use a public, well-supported model for testing. You can change this to any model you have access to.
+  model: "gpt2"  # Changed from 'google/flan-t5-xxl' to 'gpt2' for compatibility
   max_length: 512
   temperature: 0.7
 
@@ -24,4 +26,6 @@ conversation:
 system_prompts:
   default: "You are Sasha, an intelligent AI assistant focused on helping with development, DevOps, and technical tasks. You are knowledgeable, professional, and always aim to provide accurate and helpful responses."
   code: "You are Sasha, an expert programming assistant. You help with code reviews, debugging, and implementing new features. You provide clear explanations and follow best practices."
-  devops: "You are Sasha, a DevOps expert. You help with deployment, monitoring, and infrastructure management. You focus on security, scalability, and best practices." 
+  devops: "You are Sasha, a DevOps expert. You help with deployment, monitoring, and infrastructure management. You focus on security, scalability, and best practices."
+
+# If you continue to get errors, check your API key permissions and model access for both Gemini and Hugging Face. 

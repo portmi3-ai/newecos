@@ -1,17 +1,33 @@
 # Sasha Agent Configuration
 # Fill in your actual API keys and tokens below. Do NOT commit this file to public repos.
 
+# --- API Key Management ---
+# DO NOT store real API keys in this file.
+# Use environment variables or a .env file for all secrets.
+# To rotate or update keys:
+#   1. Delete the old key from your environment or secret manager.
+#   2. Add the new key as an environment variable (e.g., $env:GOOGLE_API_KEY or $env:HUGGINGFACE_API_KEY).
+#   3. Restart the backend server.
+#   4. Never commit real keys to version control.
+#
+# Example (PowerShell):
+#   $env:GOOGLE_API_KEY = "your_new_google_api_key"
+#   $env:HUGGINGFACE_API_KEY = "your_new_huggingface_api_key"
+#
+# For production, use a secure secret manager (GCP Secret Manager, AWS Secrets Manager, etc.)
+
+# --- Service Configurations ---
 discord:
-  bot_token: "MTM3NzQzNTg4NDcwOTc0NDY4MA.GAPeVQ.ewzN7PbTxlqG6izQ7I40iI7579g_9fjcSV-9ts"
-  guild_id: "1325901191846035580"
-  channel_id: "1377298299446493245"
+  bot_token: ""
+  guild_id: ""
+  channel_id: ""
 
 gcp:
-  project_id: "agentecos-1748475661"
-  service_account_json: "path/to/your/service-account.json"
+  project_id: ""
+  service_account_json: ""
 
 google:
-  api_key: "AIzaSyDyZUctzIdmA83b8oDYggmYBFRw07M-UXk"
+  api_key: ""  # Do not store real keys here
 
 huggingface:
-  api_key: "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" 
+  api_key: ""  # Do not store real keys here 
