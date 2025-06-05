@@ -41,4 +41,12 @@ router.get('/industry/:industryId', agentController.getAgentsByIndustry);
 // Get agents by role
 router.get('/role/:roleId', agentController.getAgentsByRole);
 
+// Agent message routes
+router.get('/:id/messages', agentController.getAgentMessages);
+router.post('/:id/messages', agentController.sendMessage);
+
+// Agent metrics and relationships
+router.get('/:id/metrics', agentController.getAgentMetrics);
+router.put('/:id/relationships', agentController.updateRelationships);
+
 export default router;

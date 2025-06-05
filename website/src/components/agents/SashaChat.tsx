@@ -1,41 +1,74 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { collection, query, orderBy, onSnapshot, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../../config/firebase';
-import { useAuth } from '../../hooks/useAuth';
+import { useAgent } from '../../hooks/useAgent';
+import { AgentMessage } from '../../services/api/agentService';
+import {
+  Box,
+  TextField,
+  IconButton,
+  Paper,
+  Typography,
+  CircularProgress,
+  Tooltip,
+  Alert,
+} from '@mui/material';
+import SendIcon from '@mui/icons-material/Send';
+import DeleteIcon from '@mui/icons-material/Delete';
+import { styled } from '@mui/material/styles';
 
-interface Message {
-  id: string;
-  text: string;
-  sender: 'user' | 'assistant';
-  timestamp: Date;
+const ChatContainer = styled(Paper)(({ theme }) => ({
+  height: '100%',
+  display: 'flex',
+  flexDirection: 'column',
+  padding: theme.spacing(2),
+}));
+
+const MessagesContainer = styled(Box)(({ theme }) => ({
+  flex: 1,
+  overflowY: 'auto',
+  marginBottom: theme.spacing(2),
+  padding: theme.spacing(1),
+}));
+
+const MessageBubble = styled(Box)<{ isUser: boolean }>(({ theme, isUser }) => ({
+  maxWidth: '70%',
+  padding: theme.spacing(1.5),
+  borderRadius: theme.spacing(2),
+  marginBottom: theme.spacing(1),
+  backgroundColor: isUser ? theme.palette.primary.main : theme.palette.grey[200],
+  color: isUser ? theme.palette.primary.contrastText : theme.palette.text.primary,
+  alignSelf: isUser ? 'flex-end' : 'flex-start',
+  marginLeft: isUser ? 'auto' : 0,
+  marginRight: isUser ? 0 : 'auto',
+}));
+
+const InputContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  gap: theme.spacing(1),
+}));
+
+const ActionContainer = styled(Box)(({ theme }) => ({
+  display: 'flex',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: theme.spacing(1),
+}));
+
+interface SashaChatProps {
+  agentId?: string;
 }
 
-export const SashaChat: React.FC = () => {
-  const [messages, setMessages] = useState<Message[]>([]);
+export const SashaChat: React.FC<SashaChatProps> = ({ agentId }) => {
   const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const { user, loading: authLoading } = useAuth();
+  const [isConnected, setIsConnected] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!user) return;
-
-    const q = query(
-      collection(db, 'sasha_conversations'),
-      orderBy('timestamp', 'asc')
-    );
-
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const newMessages = snapshot.docs.map(doc => ({
-        id: doc.id,
-        ...doc.data(),
-        timestamp: doc.data().timestamp?.toDate()
-      })) as Message[];
-      setMessages(newMessages);
-    });
-
-    return () => unsubscribe();
-  }, [user]);
+  const {
+    messages,
+    loading,
+    error,
+    sendMessage,
+    clearConversation,
+    checkHealth,
+  } = useAgent(agentId);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -45,87 +78,106 @@ export const SashaChat: React.FC = () => {
     scrollToBottom();
   }, [messages]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!input.trim() || !user) return;
+  useEffect(() => {
+    const checkConnection = async () => {
+      const healthy = await checkHealth();
+      setIsConnected(healthy);
+    };
 
-    setLoading(true);
+    checkConnection();
+    const interval = setInterval(checkConnection, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, [checkHealth]);
+
+  const handleSend = async () => {
+    if (!input.trim() || !isConnected) return;
+    
     try {
-      // Add user message
-      await addDoc(collection(db, 'sasha_conversations'), {
-        text: input,
-        sender: 'user',
-        timestamp: serverTimestamp(),
-        userId: user.uid
-      });
-
-      // Simulate assistant response (replace with actual AI integration)
-      await addDoc(collection(db, 'sasha_conversations'), {
-        text: 'I am processing your request...',
-        sender: 'assistant',
-        timestamp: serverTimestamp(),
-        userId: user.uid
-      });
-
+      await sendMessage(input);
       setInput('');
-    } catch (error) {
-      console.error('Error sending message:', error);
-    } finally {
-      setLoading(false);
+    } catch (err) {
+      console.error('Failed to send message:', err);
     }
   };
 
-  if (authLoading) {
-    return <div className="flex items-center justify-center h-screen">Loading...</div>;
-  }
+  const handleKeyPress = (event: React.KeyboardEvent) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend();
+    }
+  };
 
-  if (!user) {
-    return <div className="flex items-center justify-center h-screen">Please log in to chat with Sasha.</div>;
+  const handleClear = async () => {
+    try {
+      await clearConversation();
+    } catch (err) {
+      console.error('Failed to clear conversation:', err);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Box display="flex" justifyContent="center" alignItems="center" height="100%">
+        <CircularProgress />
+      </Box>
+    );
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-100 dark:bg-gray-900">
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`flex ${
-              message.sender === 'user' ? 'justify-end' : 'justify-start'
-            }`}
-          >
-            <div
-              className={`max-w-[70%] rounded-lg p-3 ${
-                message.sender === 'user'
-                  ? 'bg-blue-500 text-white'
-                  : 'bg-gray-200 dark:bg-gray-700 text-gray-900 dark:text-white'
-              }`}
-            >
-              {message.text}
-            </div>
-          </div>
+    <ChatContainer elevation={3}>
+      <ActionContainer>
+        <Typography variant="h6">Chat with Sasha</Typography>
+        <Tooltip title="Clear conversation">
+          <IconButton onClick={handleClear} size="small">
+            <DeleteIcon />
+          </IconButton>
+        </Tooltip>
+      </ActionContainer>
+
+      {!isConnected && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Unable to connect to Sasha. Please check if the server is running.
+        </Alert>
+      )}
+
+      {error && (
+        <Alert severity="error" sx={{ mb: 2 }}>
+          Error: {error.message}
+        </Alert>
+      )}
+
+      <MessagesContainer>
+        {messages.map((message: AgentMessage) => (
+          <MessageBubble key={message.id} isUser={message.role === 'user'}>
+            <Typography variant="body1">{message.content}</Typography>
+            <Typography variant="caption" color="textSecondary">
+              {new Date(message.timestamp).toLocaleTimeString()}
+            </Typography>
+          </MessageBubble>
         ))}
         <div ref={messagesEndRef} />
-      </div>
-
-      <form onSubmit={handleSubmit} className="p-4 border-t border-gray-200 dark:border-gray-700">
-        <div className="flex space-x-4">
-        <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="Type your message..."
-            className="flex-1 p-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 dark:bg-gray-800 dark:text-white"
-            disabled={loading}
-          />
-        <button
-            type="submit"
-            disabled={loading}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50"
-          >
-            {loading ? 'Sending...' : 'Send'}
-        </button>
-      </div>
-      </form>
-    </div>
+      </MessagesContainer>
+      
+      <InputContainer>
+        <TextField
+          fullWidth
+          variant="outlined"
+          placeholder="Type your message..."
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          onKeyPress={handleKeyPress}
+          multiline
+          maxRows={4}
+          disabled={!isConnected}
+        />
+        <IconButton 
+          color="primary" 
+          onClick={handleSend}
+          disabled={!input.trim() || !isConnected}
+        >
+          <SendIcon />
+        </IconButton>
+      </InputContainer>
+    </ChatContainer>
   );
 };

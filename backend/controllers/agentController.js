@@ -1,6 +1,14 @@
 import { firestore, collections } from '../config/db.js';
 import { generateDeploymentConfig, AGENT_STATES } from '../config/agent.js';
 import { v4 as uuidv4 } from 'uuid';
+import Agent from '../models/Agent.js';
+import Message from '../models/Message.js';
+import { Logging } from '@google-cloud/logging';
+import config from '../config/environment.js';
+import { wsManager } from '../config/websocket.js';
+
+const logging = new Logging();
+const log = logging.log('agentEcos-api');
 
 // Get all agent templates
 export const getAgentTemplates = async (req, res) => {
@@ -75,348 +83,167 @@ export const getAgentRoles = async (req, res) => {
 // Get all agents for the authenticated user
 export const getAgents = async (req, res) => {
   try {
-    const userId = req.user.sub;
-    
-    const agentsRef = firestore.collection(collections.AGENTS);
-    const snapshot = await agentsRef.where('userId', '==', userId).get();
-    
-    const agents = [];
-    snapshot.forEach(doc => {
-      agents.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-    
+    const agents = await Agent.find({ createdBy: req.user.sub });
     res.json(agents);
   } catch (error) {
-    res.status(500);
-    throw new Error('Server error: ' + error.message);
+    console.error('Error fetching agents:', error);
+    res.status(500).json({ error: 'Failed to fetch agents' });
   }
 };
 
 // Get single agent by ID
 export const getAgentById = async (req, res) => {
   try {
-    const userId = req.user.sub;
-    const agentId = req.params.id;
-    
-    const agentRef = firestore.collection(collections.AGENTS).doc(agentId);
-    const doc = await agentRef.get();
-    
-    if (!doc.exists) {
-      res.status(404);
-      throw new Error('Agent not found');
-    }
-    
-    const agent = doc.data();
-    
-    // Check if agent belongs to user
-    if (agent.userId !== userId) {
-      res.status(403);
-      throw new Error('Not authorized to access this agent');
-    }
-    
-    res.json({
-      id: doc.id,
-      ...agent
+    const agent = await Agent.findOne({
+      _id: req.params.id,
+      createdBy: req.user.sub,
     });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    res.json(agent);
   } catch (error) {
-    res.status(res.statusCode === 200 ? 500 : res.statusCode);
-    throw new Error(error.message);
+    console.error('Error fetching agent:', error);
+    res.status(500).json({ error: 'Failed to fetch agent' });
   }
 };
 
 // Create new agent
 export const createAgent = async (req, res) => {
   try {
-    const userId = req.user.sub;
-    const { 
-      name, 
-      description, 
-      industry, 
-      template, 
-      role, 
-      parentAgentId, 
-      capabilities = [] 
-    } = req.body;
+    const { name, type, model, capabilities, configuration } = req.body;
     
-    // Validate required fields
-    if (!name || !industry || !template) {
-      res.status(400);
-      throw new Error('Please provide name, industry, and template');
-    }
-    
-    // Check agent limit for free users
-    if (!req.user.hasSubscription) {
-      const agentsRef = firestore.collection(collections.AGENTS);
-      const snapshot = await agentsRef.where('userId', '==', userId).get();
-      
-      if (snapshot.size >= 3) {
-        res.status(403);
-        throw new Error('Free tier limited to 3 agents. Please upgrade to create more agents.');
-      }
-    }
-    
-    // Create new agent
-    const newAgent = {
+    const agent = new Agent({
       name,
-      description: description || '',
-      industry,
-      template,
-      role: role || null,
-      active: false,
-      deployed: false,
-      createdAt: new Date().toISOString(),
-      lastDeployed: null,
-      parentAgentId: parentAgentId || null,
-      userId,
+      type,
+      model,
       capabilities,
+      configuration,
+      createdBy: req.user.sub,
+    });
+
+    await agent.save();
+
+    // Broadcast agent creation
+    wsManager.broadcastToAgent(agent._id, {
+      type: 'agent_created',
+      agent: agent.toJSON(),
+    });
+
+    const metadata = {
+      resource: { type: 'global' },
+      severity: 'INFO',
     };
     
-    const agentRef = firestore.collection(collections.AGENTS).doc();
-    await agentRef.set(newAgent);
-    
-    // If parent agent specified, create relationship
-    if (parentAgentId) {
-      const relationshipRef = firestore.collection(collections.RELATIONSHIPS).doc();
-      
-      // Create reports_to relationship
-      await relationshipRef.set({
-        sourceAgentId: agentRef.id,
-        targetAgentId: parentAgentId,
-        type: 'reports_to',
-        createdAt: new Date().toISOString(),
-        userId,
-      });
-      
-      // Create supervises relationship
-      const superviseRef = firestore.collection(collections.RELATIONSHIPS).doc();
-      await superviseRef.set({
-        sourceAgentId: parentAgentId,
-        targetAgentId: agentRef.id,
-        type: 'supervises',
-        createdAt: new Date().toISOString(),
-        userId,
-      });
-      
-      // Update parent agent to include this child
-      const parentRef = firestore.collection(collections.AGENTS).doc(parentAgentId);
-      await parentRef.update({
-        childAgentIds: firestore.FieldValue.arrayUnion(agentRef.id)
-      });
-    }
-    
-    res.status(201).json({
-      id: agentRef.id,
-      ...newAgent
+    const entry = log.entry(metadata, {
+      message: 'Agent created',
+      agentId: agent._id,
+      name: agent.name,
+      type: agent.type,
+      environment: config.server.env,
     });
+    
+    log.write(entry);
+
+    res.status(201).json(agent);
   } catch (error) {
-    res.status(res.statusCode === 200 ? 500 : res.statusCode);
-    throw new Error(error.message);
+    console.error('Error creating agent:', error);
+    res.status(500).json({ error: 'Failed to create agent' });
   }
 };
 
 // Update agent
 export const updateAgent = async (req, res) => {
   try {
-    const userId = req.user.sub;
-    const agentId = req.params.id;
+    const { name, type, model, capabilities, configuration, status } = req.body;
     
-    // Check if agent exists and belongs to user
-    const agentRef = firestore.collection(collections.AGENTS).doc(agentId);
-    const doc = await agentRef.get();
-    
-    if (!doc.exists) {
-      res.status(404);
-      throw new Error('Agent not found');
-    }
-    
-    const agent = doc.data();
-    
-    // Check if agent belongs to user
-    if (agent.userId !== userId) {
-      res.status(403);
-      throw new Error('Not authorized to update this agent');
-    }
-    
-    // Update agent with new data, preserving fields not included in the request
-    const updateData = { ...req.body };
-    
-    // Don't allow changing userId or deployed status through this endpoint
-    delete updateData.userId;
-    delete updateData.deployed;
-    
-    // Add updated timestamp
-    updateData.updatedAt = new Date().toISOString();
-    
-    // Handle parent agent changes if needed
-    if (updateData.parentAgentId !== undefined && 
-        updateData.parentAgentId !== agent.parentAgentId) {
-      
-      // Remove old parent-child relationship
-      if (agent.parentAgentId) {
-        // Get relationship docs to delete
-        const oldRelationships = await firestore.collection(collections.RELATIONSHIPS)
-          .where('sourceAgentId', '==', agentId)
-          .where('targetAgentId', '==', agent.parentAgentId)
-          .where('type', '==', 'reports_to')
-          .get();
-          
-        const oldSupervisesRel = await firestore.collection(collections.RELATIONSHIPS)
-          .where('sourceAgentId', '==', agent.parentAgentId)
-          .where('targetAgentId', '==', agentId)
-          .where('type', '==', 'supervises')
-          .get();
-          
-        // Delete relationships
-        const batch = firestore.batch();
-        oldRelationships.forEach(doc => batch.delete(doc.ref));
-        oldSupervisesRel.forEach(doc => batch.delete(doc.ref));
-        await batch.commit();
-        
-        // Update old parent agent
-        const oldParentRef = firestore.collection(collections.AGENTS).doc(agent.parentAgentId);
-        await oldParentRef.update({
-          childAgentIds: firestore.FieldValue.arrayRemove(agentId)
-        });
-      }
-      
-      // Add new parent-child relationship
-      if (updateData.parentAgentId) {
-        // Create reports_to relationship
-        const newRelRef = firestore.collection(collections.RELATIONSHIPS).doc();
-        await newRelRef.set({
-          sourceAgentId: agentId,
-          targetAgentId: updateData.parentAgentId,
-          type: 'reports_to',
-          createdAt: new Date().toISOString(),
-          userId,
-        });
-        
-        // Create supervises relationship
-        const newSupRef = firestore.collection(collections.RELATIONSHIPS).doc();
-        await newSupRef.set({
-          sourceAgentId: updateData.parentAgentId,
-          targetAgentId: agentId,
-          type: 'supervises',
-          createdAt: new Date().toISOString(),
-          userId,
-        });
-        
-        // Update new parent agent
-        const newParentRef = firestore.collection(collections.AGENTS).doc(updateData.parentAgentId);
-        await newParentRef.update({
-          childAgentIds: firestore.FieldValue.arrayUnion(agentId)
-        });
-      }
-    }
-    
-    await agentRef.update(updateData);
-    
-    // Get updated agent
-    const updatedDoc = await agentRef.get();
-    
-    res.json({
-      id: updatedDoc.id,
-      ...updatedDoc.data()
+    const agent = await Agent.findOne({
+      _id: req.params.id,
+      createdBy: req.user.sub,
     });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    Object.assign(agent, {
+      name,
+      type,
+      model,
+      capabilities,
+      configuration,
+      status,
+    });
+
+    await agent.save();
+
+    // Broadcast agent update
+    wsManager.broadcastToAgent(agent._id, {
+      type: 'agent_updated',
+      agent: agent.toJSON(),
+    });
+
+    const metadata = {
+      resource: { type: 'global' },
+      severity: 'INFO',
+    };
+    
+    const entry = log.entry(metadata, {
+      message: 'Agent updated',
+      agentId: agent._id,
+      name: agent.name,
+      type: agent.type,
+      environment: config.server.env,
+    });
+    
+    log.write(entry);
+
+    res.json(agent);
   } catch (error) {
-    res.status(res.statusCode === 200 ? 500 : res.statusCode);
-    throw new Error(error.message);
+    console.error('Error updating agent:', error);
+    res.status(500).json({ error: 'Failed to update agent' });
   }
 };
 
 // Delete agent
 export const deleteAgent = async (req, res) => {
   try {
-    const userId = req.user.sub;
-    const agentId = req.params.id;
-    
-    // Check if agent exists and belongs to user
-    const agentRef = firestore.collection(collections.AGENTS).doc(agentId);
-    const doc = await agentRef.get();
-    
-    if (!doc.exists) {
-      res.status(404);
-      throw new Error('Agent not found');
+    const agent = await Agent.findOneAndDelete({
+      _id: req.params.id,
+      createdBy: req.user.sub,
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
     }
+
+    // Broadcast agent deletion
+    wsManager.broadcastToAgent(agent._id, {
+      type: 'agent_deleted',
+      agentId: agent._id,
+    });
+
+    const metadata = {
+      resource: { type: 'global' },
+      severity: 'INFO',
+    };
     
-    const agent = doc.data();
+    const entry = log.entry(metadata, {
+      message: 'Agent deleted',
+      agentId: agent._id,
+      name: agent.name,
+      type: agent.type,
+      environment: config.server.env,
+    });
     
-    // Check if agent belongs to user
-    if (agent.userId !== userId) {
-      res.status(403);
-      throw new Error('Not authorized to delete this agent');
-    }
-    
-    // Start a batch transaction for deleting the agent and related data
-    const batch = firestore.batch();
-    
-    // Delete agent
-    batch.delete(agentRef);
-    
-    // Delete relationships
-    const relationshipsSnapshot = await firestore.collection(collections.RELATIONSHIPS)
-      .where('sourceAgentId', '==', agentId)
-      .get();
-      
-    const targetRelationshipsSnapshot = await firestore.collection(collections.RELATIONSHIPS)
-      .where('targetAgentId', '==', agentId)
-      .get();
-      
-    relationshipsSnapshot.forEach(doc => batch.delete(doc.ref));
-    targetRelationshipsSnapshot.forEach(doc => batch.delete(doc.ref));
-    
-    // Update parent agent if exists
-    if (agent.parentAgentId) {
-      const parentRef = firestore.collection(collections.AGENTS).doc(agent.parentAgentId);
-      const parentDoc = await parentRef.get();
-      
-      if (parentDoc.exists) {
-        batch.update(parentRef, {
-          childAgentIds: firestore.FieldValue.arrayRemove(agentId)
-        });
-      }
-    }
-    
-    // Update any child agents to remove parent reference
-    if (agent.childAgentIds && agent.childAgentIds.length > 0) {
-      const childPromises = agent.childAgentIds.map(async (childId) => {
-        const childRef = firestore.collection(collections.AGENTS).doc(childId);
-        const childDoc = await childRef.get();
-        
-        if (childDoc.exists) {
-          batch.update(childRef, {
-            parentAgentId: null
-          });
-          
-          // Delete relationships between parent and child
-          const childRelSnapshot = await firestore.collection(collections.RELATIONSHIPS)
-            .where('sourceAgentId', '==', childId)
-            .where('targetAgentId', '==', agentId)
-            .get();
-            
-          const parentChildRelSnapshot = await firestore.collection(collections.RELATIONSHIPS)
-            .where('sourceAgentId', '==', agentId)
-            .where('targetAgentId', '==', childId)
-            .get();
-            
-          childRelSnapshot.forEach(doc => batch.delete(doc.ref));
-          parentChildRelSnapshot.forEach(doc => batch.delete(doc.ref));
-        }
-      });
-      
-      await Promise.all(childPromises);
-    }
-    
-    // Commit the batch transaction
-    await batch.commit();
-    
+    log.write(entry);
+
     res.json({ message: 'Agent deleted successfully' });
   } catch (error) {
-    res.status(res.statusCode === 200 ? 500 : res.statusCode);
-    throw new Error(error.message);
+    console.error('Error deleting agent:', error);
+    res.status(500).json({ error: 'Failed to delete agent' });
   }
 };
 
@@ -647,5 +474,136 @@ export const getAgentsByRole = async (req, res) => {
   } catch (error) {
     res.status(res.statusCode === 200 ? 500 : res.statusCode);
     throw new Error(error.message);
+  }
+};
+
+// Get agent messages
+export const getAgentMessages = async (req, res) => {
+  try {
+    const { sessionId } = req.query;
+    const messages = await Message.findBySession(req.params.id, sessionId);
+    res.json(messages);
+  } catch (error) {
+    console.error('Error fetching agent messages:', error);
+    res.status(500).json({ error: 'Failed to fetch agent messages' });
+  }
+};
+
+// Send message to agent
+export const sendMessage = async (req, res) => {
+  try {
+    const { content, sessionId, mode = 'chat' } = req.body;
+    
+    const agent = await Agent.findOne({
+      _id: req.params.id,
+      createdBy: req.user.sub,
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    const message = new Message({
+      agentId: agent._id,
+      sessionId,
+      content,
+      role: 'user',
+      mode,
+    });
+
+    await message.save();
+
+    // Update agent metrics
+    await agent.updateMetrics(true);
+
+    // Broadcast new message
+    wsManager.broadcastToAgent(agent._id, {
+      type: 'new_message',
+      message: message.toJSON(),
+    });
+
+    const metadata = {
+      resource: { type: 'global' },
+      severity: 'INFO',
+    };
+    
+    const entry = log.entry(metadata, {
+      message: 'Message sent to agent',
+      agentId: agent._id,
+      messageId: message._id,
+      sessionId,
+      mode,
+      environment: config.server.env,
+    });
+    
+    log.write(entry);
+
+    res.status(201).json(message);
+  } catch (error) {
+    console.error('Error sending message:', error);
+    res.status(500).json({ error: 'Failed to send message' });
+  }
+};
+
+// Get agent metrics
+export const getAgentMetrics = async (req, res) => {
+  try {
+    const agent = await Agent.findOne({
+      _id: req.params.id,
+      createdBy: req.user.sub,
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    res.json(agent.metrics);
+  } catch (error) {
+    console.error('Error fetching agent metrics:', error);
+    res.status(500).json({ error: 'Failed to fetch agent metrics' });
+  }
+};
+
+// Update agent relationships
+export const updateRelationships = async (req, res) => {
+  try {
+    const { relationships } = req.body;
+    
+    const agent = await Agent.findOne({
+      _id: req.params.id,
+      createdBy: req.user.sub,
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    agent.relationships = relationships;
+    await agent.save();
+
+    // Broadcast relationship update
+    wsManager.broadcastToAgent(agent._id, {
+      type: 'relationships_updated',
+      relationships: agent.relationships,
+    });
+
+    const metadata = {
+      resource: { type: 'global' },
+      severity: 'INFO',
+    };
+    
+    const entry = log.entry(metadata, {
+      message: 'Agent relationships updated',
+      agentId: agent._id,
+      relationships,
+      environment: config.server.env,
+    });
+    
+    log.write(entry);
+
+    res.json(agent);
+  } catch (error) {
+    console.error('Error updating agent relationships:', error);
+    res.status(500).json({ error: 'Failed to update agent relationships' });
   }
 };

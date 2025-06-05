@@ -1,6 +1,7 @@
 import express from 'express';
 import { checkJwt, checkSubscription } from '../middleware/authMiddleware.js';
 import * as deploymentController from '../controllers/deploymentController.js';
+import { authenticateJWT } from '../middleware/auth.js';
 
 const router = express.Router();
 
@@ -27,5 +28,17 @@ router.put('/:id/configuration', deploymentController.updateDeploymentConfigurat
 
 // Delete deployment
 router.delete('/:id', deploymentController.deleteDeployment);
+
+// Apply authentication middleware to all routes
+router.use(authenticateJWT);
+
+// Deploy an agent
+router.post('/:id/deploy', deploymentController.deployAgent);
+
+// Undeploy an agent
+router.post('/:id/undeploy', deploymentController.undeployAgent);
+
+// Update deployment configuration
+router.put('/:id/config', deploymentController.updateDeploymentConfig);
 
 export default router;

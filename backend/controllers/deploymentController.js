@@ -2,11 +2,21 @@ import { firestore, collections } from '../config/db.js';
 import { generateDeploymentConfig, AGENT_STATES, getAgentTopic, getAgentBucket } from '../config/agent.js';
 import { PubSub } from '@google-cloud/pubsub';
 import { Logging } from '@google-cloud/logging';
+import Agent from '../models/Agent.js';
+import config from '../config/environment.js';
+import { wsManager } from '../config/websocket.js';
+import { VertexAI } from '@google-cloud/vertexai';
 
 // Initialize clients
 const pubsub = new PubSub();
 const logging = new Logging();
-const log = logging.log('agent-deployments');
+const log = logging.log('agentEcos-api');
+
+// Initialize Vertex AI
+const vertexAi = new VertexAI({
+  project: config.vertexAi.projectId,
+  location: config.vertexAi.location,
+});
 
 // Caching mechanisms for optimization
 const agentCache = new Map();
@@ -117,245 +127,201 @@ export const getDeploymentById = async (req, res) => {
   }
 };
 
-// Deploy an agent with optimized logging and status updates
+// Deploy agent
 export const deployAgent = async (req, res) => {
   try {
-    const userId = req.user.sub;
-    const agentId = req.params.agentId;
-    
-    // Configuration options
-    const { 
-      serviceType = 'serverless',
-      instanceSize = 'small',
-      autoScaling = true,
-      minInstances,
-      maxInstances,
-      environmentVariables = {},
-      secrets = {}
-    } = req.body;
-    
-    // Check if agent exists and belongs to user
-    const agentRef = firestore.collection(collections.AGENTS).doc(agentId);
-    
-    // Check cache first
-    const cacheKey = `agent:${agentId}`;
-    let agent;
-    const cachedAgent = agentCache.get(cacheKey);
-    
-    if (cachedAgent && Date.now() - cachedAgent.timestamp < CACHE_TTL) {
-      agent = cachedAgent.data;
-    } else {
-      const agentDoc = await agentRef.get();
-      
-      if (!agentDoc.exists) {
-        res.status(404);
-        throw new Error('Agent not found');
-      }
-      
-      agent = agentDoc.data();
-      
-      // Update cache
-      agentCache.set(cacheKey, {
-        data: agent,
-        timestamp: Date.now()
-      });
-    }
-    
-    // Check if agent belongs to user
-    if (agent.userId !== userId) {
-      res.status(403);
-      throw new Error('Not authorized to deploy this agent');
-    }
-    
-    // Create deployment record
-    const deploymentRef = firestore.collection(collections.DEPLOYMENTS).doc();
-    const deploymentId = deploymentRef.id;
-    
-    const deploymentConfig = {
-      serviceType,
-      instanceSize,
-      autoScaling,
-      minInstances: minInstances || 0,
-      maxInstances: maxInstances || 10,
-      environmentVariables,
-      secretsCount: Object.keys(secrets).length
-    };
-    
-    const deployment = {
-      id: deploymentId,
-      agentId,
-      userId,
-      status: AGENT_STATES.DEPLOYING,
-      config: deploymentConfig,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      logs: [
-        {
-          timestamp: new Date().toISOString(),
-          message: 'Deployment initiated',
-          level: 'info'
-        }
-      ]
-    };
-    
-    await deploymentRef.set(deployment);
-    
-    // Update agent status to deploying
-    await agentRef.update({
-      deployed: false,
-      status: AGENT_STATES.DEPLOYING,
-      updatedAt: new Date().toISOString()
+    const { id } = req.params;
+    const { configuration } = req.body;
+
+    const agent = await Agent.findOne({
+      _id: id,
+      createdBy: req.user.sub,
     });
-    
-    // Clear any cached data for this agent
-    agentCache.delete(cacheKey);
-    
-    // Batch log entries for better performance
-    const logEntries = [];
-    
-    // Create log entry for deployment initiation
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    // Update agent configuration
+    if (configuration) {
+      agent.configuration = new Map(Object.entries(configuration));
+    }
+
+    // Initialize model based on agent type
+    let model;
+    switch (agent.model) {
+      case 'gemini-pro':
+        model = vertexAi.preview.getGenerativeModel({
+          model: 'gemini-pro',
+          generation_config: {
+            max_output_tokens: 2048,
+            temperature: 0.4,
+            top_p: 0.8,
+            top_k: 40,
+          },
+        });
+        break;
+      case 'claude-3':
+        // Initialize Claude model (implementation depends on your provider)
+        break;
+      default:
+        throw new Error(`Unsupported model: ${agent.model}`);
+    }
+
+    // Update agent status
+    agent.status = 'deployed';
+    await agent.save();
+
+    // Broadcast deployment status
+    wsManager.broadcastToAgent(agent._id, {
+      type: 'agent_deployed',
+      agent: agent.toJSON(),
+    });
+
     const metadata = {
       resource: { type: 'global' },
       severity: 'INFO',
     };
     
-    logEntries.push(
-      log.entry(metadata, {
-        deploymentId,
-        agentId,
-        userId,
-        action: 'deployment_initiated',
-        timestamp: new Date().toISOString(),
-      })
-    );
+    const entry = log.entry(metadata, {
+      message: 'Agent deployed',
+      agentId: agent._id,
+      name: agent.name,
+      model: agent.model,
+      environment: config.server.env,
+    });
     
-    // Publish deployment event to start the actual deployment process
-    const topic = await getAgentTopic('DEPLOYMENT');
-    const messageId = await topic.publish(Buffer.from(JSON.stringify({
-      deploymentId,
-      agentId,
-      userId,
-      config: deploymentConfig,
-      secrets,
-      timestamp: new Date().toISOString()
-    })));
-    
-    logEntries.push(
-      log.entry(metadata, {
-        deploymentId,
-        agentId,
-        userId,
-        messageId,
-        action: 'deployment_message_published',
-        timestamp: new Date().toISOString(),
-      })
-    );
-    
-    // Write all log entries in a batch for better performance
-    await log.write(logEntries);
-    
-    // Return the deployment details
-    res.status(202).json({
-      id: deploymentId,
-      status: AGENT_STATES.DEPLOYING,
-      message: 'Deployment initiated. Check status for updates.',
-      agent: {
-        id: agentId,
-        name: agent.name
-      }
+    log.write(entry);
+
+    res.json({
+      message: 'Agent deployed successfully',
+      agent: agent.toJSON(),
     });
   } catch (error) {
-    res.status(res.statusCode === 200 ? 500 : res.statusCode);
-    throw new Error(error.message);
+    console.error('Error deploying agent:', error);
+    res.status(500).json({ error: 'Failed to deploy agent' });
   }
 };
 
-// Get deployment status with optimized cache
-export const getDeploymentStatus = async (req, res) => {
+// Undeploy agent
+export const undeployAgent = async (req, res) => {
   try {
-    const userId = req.user.sub;
-    const deploymentId = req.params.id;
-    
-    // Check cache first
-    const cacheKey = `deployment-status:${deploymentId}`;
-    const cachedStatus = deploymentCache.get(cacheKey);
-    
-    if (cachedStatus && Date.now() - cachedStatus.timestamp < 10000) { // 10 second cache for status
-      // Ensure the cached status belongs to the user
-      if (cachedStatus.data.userId === userId) {
-        return res.json(cachedStatus.data);
-      }
+    const { id } = req.params;
+
+    const agent = await Agent.findOne({
+      _id: id,
+      createdBy: req.user.sub,
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
     }
-    
-    const deploymentRef = firestore.collection(collections.DEPLOYMENTS).doc(deploymentId);
-    const doc = await deploymentRef.get();
-    
-    if (!doc.exists) {
-      res.status(404);
-      throw new Error('Deployment not found');
-    }
-    
-    const deployment = doc.data();
-    
-    // Check if deployment belongs to user
-    if (deployment.userId !== userId) {
-      res.status(403);
-      throw new Error('Not authorized to access this deployment');
-    }
-    
-    // Get associated agent - use cache if available
-    let agent;
-    const agentCacheKey = `agent:${deployment.agentId}`;
-    const cachedAgent = agentCache.get(agentCacheKey);
-    
-    if (cachedAgent && Date.now() - cachedAgent.timestamp < CACHE_TTL) {
-      agent = cachedAgent.data;
-    } else {
-      const agentRef = firestore.collection(collections.AGENTS).doc(deployment.agentId);
-      const agentDoc = await agentRef.get();
-      
-      if (!agentDoc.exists) {
-        res.status(404);
-        throw new Error('Associated agent not found');
-      }
-      
-      agent = agentDoc.data();
-      
-      // Update cache
-      agentCache.set(agentCacheKey, {
-        data: agent,
-        timestamp: Date.now()
-      });
-    }
-    
-    // Prepare response data
-    const statusData = {
-      id: deploymentId,
-      status: deployment.status,
-      createdAt: deployment.createdAt,
-      updatedAt: deployment.updatedAt,
-      config: deployment.config,
-      serviceUrl: deployment.serviceUrl,
-      userId,
-      agent: {
-        id: deployment.agentId,
-        name: agent.name,
-        status: agent.status,
-        deployed: agent.deployed
-      }
+
+    // Update agent status
+    agent.status = 'inactive';
+    await agent.save();
+
+    // Broadcast undeployment status
+    wsManager.broadcastToAgent(agent._id, {
+      type: 'agent_undeployed',
+      agent: agent.toJSON(),
+    });
+
+    const metadata = {
+      resource: { type: 'global' },
+      severity: 'INFO',
     };
     
-    // Update cache
-    deploymentCache.set(cacheKey, {
-      data: statusData,
-      timestamp: Date.now()
+    const entry = log.entry(metadata, {
+      message: 'Agent undeployed',
+      agentId: agent._id,
+      name: agent.name,
+      environment: config.server.env,
     });
     
-    // Return deployment status with agent info
-    res.json(statusData);
+    log.write(entry);
+
+    res.json({
+      message: 'Agent undeployed successfully',
+      agent: agent.toJSON(),
+    });
   } catch (error) {
-    res.status(res.statusCode === 200 ? 500 : res.statusCode);
-    throw new Error(error.message);
+    console.error('Error undeploying agent:', error);
+    res.status(500).json({ error: 'Failed to undeploy agent' });
+  }
+};
+
+// Get deployment status
+export const getDeploymentStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    const agent = await Agent.findOne({
+      _id: id,
+      createdBy: req.user.sub,
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    res.json({
+      status: agent.status,
+      lastDeployed: agent.updatedAt,
+      metrics: agent.metrics,
+    });
+  } catch (error) {
+    console.error('Error getting deployment status:', error);
+    res.status(500).json({ error: 'Failed to get deployment status' });
+  }
+};
+
+// Update deployment configuration
+export const updateDeploymentConfig = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { configuration } = req.body;
+
+    const agent = await Agent.findOne({
+      _id: id,
+      createdBy: req.user.sub,
+    });
+
+    if (!agent) {
+      return res.status(404).json({ error: 'Agent not found' });
+    }
+
+    // Update configuration
+    agent.configuration = new Map(Object.entries(configuration));
+    await agent.save();
+
+    // Broadcast configuration update
+    wsManager.broadcastToAgent(agent._id, {
+      type: 'deployment_config_updated',
+      configuration: Object.fromEntries(agent.configuration),
+    });
+
+    const metadata = {
+      resource: { type: 'global' },
+      severity: 'INFO',
+    };
+    
+    const entry = log.entry(metadata, {
+      message: 'Deployment configuration updated',
+      agentId: agent._id,
+      name: agent.name,
+      environment: config.server.env,
+    });
+    
+    log.write(entry);
+
+    res.json({
+      message: 'Deployment configuration updated successfully',
+      configuration: Object.fromEntries(agent.configuration),
+    });
+  } catch (error) {
+    console.error('Error updating deployment configuration:', error);
+    res.status(500).json({ error: 'Failed to update deployment configuration' });
   }
 };
 

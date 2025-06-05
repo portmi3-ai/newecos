@@ -1,84 +1,96 @@
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
-import morgan from 'morgan';
-import dotenv from 'dotenv';
+import compression from 'compression';
+import { createServer } from 'http';
 import { fileURLToPath } from 'url';
-import path from 'path';
-import { Logging } from '@google-cloud/logging';
-import { auth } from 'express-oauth2-jwt-bearer';
-
-// Routes
+import { dirname, join } from 'path';
+import config from './config/environment.js';
+import { connectDB } from './config/database.js';
+import { wsManager } from './config/websocket.js';
 import agentRoutes from './routes/agentRoutes.js';
-import userRoutes from './routes/userRoutes.js';
 import deploymentRoutes from './routes/deploymentRoutes.js';
-import relationshipRoutes from './routes/relationshipRoutes.js';
-import blueprintRoutes from './routes/blueprintRoutes.js';
-import metricsRoutes from './routes/metricsRoutes.js';
+import { Logging } from '@google-cloud/logging';
 
-// Middleware
-import { errorHandler } from './middleware/errorMiddleware.js';
-import { requestLogger } from './middleware/loggerMiddleware.js';
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
-// Configuration
-dotenv.config();
-
-// Debug: Print all loaded environment variables (for troubleshooting .env loading)
-console.log('Loaded environment variables:', Object.keys(process.env).filter(k => k.includes('AUTH') || k.includes('GOOGLE')).reduce((obj, k) => { obj[k] = process.env[k]; return obj; }, {}));
-
-// Initialize Express app
-const app = express();
-const port = process.env.PORT || 8080; // Use 8080 for Cloud Run compatibility
-
-// Setup Google Cloud Logging
+// Initialize logging
 const logging = new Logging();
 const log = logging.log('agentEcos-api');
+
+// Create Express app
+const app = express();
+
+// Create HTTP server for WebSocket support
+const server = createServer(app);
+
+// Initialize WebSocket server
+wsManager.initialize(server);
 
 // Middleware
 app.use(cors());
 app.use(helmet());
+app.use(compression());
 app.use(express.json());
-app.use(morgan('dev'));
-app.use(requestLogger(log));
-
-// JWT Auth Middleware (for protected routes)
-const checkJwt = auth({
-  audience: process.env.AUTH0_AUDIENCE,
-  issuerBaseURL: process.env.AUTH0_ISSUER_BASE_URL,
-});
-
-// Routes
-app.use('/api/agents', agentRoutes);
-app.use('/api/users', userRoutes);
-app.use('/api/deployments', deploymentRoutes);
-app.use('/api/relationships', relationshipRoutes);
-app.use('/api/blueprints', blueprintRoutes);
-app.use('/api/metrics', metricsRoutes);
+app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', environment: config.server.env });
 });
 
-// Error handling middleware
-app.use(errorHandler);
+// API routes
+app.use('/api/agents', agentRoutes);
+app.use('/api/deployments', deploymentRoutes);
 
-// Start the server
-app.listen(port, '0.0.0.0', () => {
-  console.log(`Server running on port ${port} on host 0.0.0.0`);
+// Error handling middleware
+app.use((err, req, res, next) => {
+  console.error(err.stack);
   
-  // Log server startup
   const metadata = {
     resource: { type: 'global' },
-    severity: 'INFO',
+    severity: 'ERROR',
   };
   
   const entry = log.entry(metadata, {
-    message: `Server started on port ${port}`,
-    timestamp: new Date().toISOString(),
+    message: 'Server error',
+    error: err.message,
+    stack: err.stack,
+    environment: config.server.env,
   });
   
   log.write(entry);
+  
+  res.status(500).json({ error: 'Internal server error' });
 });
 
-export default app;
+// Connect to database and start server
+const startServer = async () => {
+  try {
+    await connectDB();
+    
+    server.listen(config.server.port, config.server.host, () => {
+      console.log(`Server running on ${config.server.host}:${config.server.port}`);
+      
+      const metadata = {
+        resource: { type: 'global' },
+        severity: 'INFO',
+      };
+      
+      const entry = log.entry(metadata, {
+        message: 'Server started',
+        host: config.server.host,
+        port: config.server.port,
+        environment: config.server.env,
+      });
+      
+      log.write(entry);
+    });
+  } catch (error) {
+    console.error('Failed to start server:', error);
+    process.exit(1);
+  }
+};
+
+startServer();

@@ -1,7 +1,6 @@
 {
   "projects": {
-    "default": "mp135595",
-    "staging": "mp135595"
+    "default": "sasha-firebase-meta"
   },
   "targets": {},
   "etags": {}
