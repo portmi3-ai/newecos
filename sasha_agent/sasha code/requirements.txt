@@ -1,0 +1,12 @@
+langgraph
+langchain
+google-cloud-texttospeech
+google-cloud-firestore
+google-cloud-storage
+google-auth
+huggingface_hub
+transformers
+sentence-transformers
+fastapi
+uvicorn
+python-dotenv

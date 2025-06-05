@@ -1,0 +1,125 @@
+# Sasha Meta Agent Configuration
+
+# API Keys and Tokens
+api_keys:
+  openai: ${OPENAI_API_KEY}
+  google: ${GOOGLE_API_KEY}
+  github: ${GITHUB_TOKEN}
+  huggingface: ${HF_TOKEN}
+  anthropic: ${ANTHROPIC_API_KEY}
+  mistral: ${MISTRAL_API_KEY}
+  groq: ${GROQ_API_KEY}
+  together: ${TOGETHER_API_KEY}
+  replicate: ${REPLICATE_API_KEY}
+  stability: ${STABILITY_API_KEY}
+  elevenlabs: ${ELEVENLABS_API_KEY}
+
+# Model Settings
+models:
+  primary: "gemini-pro"
+  fallback: "gpt-4"
+  text_generation: "mistral-large"
+  code_generation: "codellama-34b"
+  image_generation: "stability-ai"
+  voice_generation: "elevenlabs"
+
+# Integration Settings
+integrations:
+  github:
+    enabled: true
+    cache_dir: "./cache/github"
+    max_cache_size: 1024  # MB
+    rate_limit: 5000  # requests per hour
+    
+  huggingface:
+    enabled: true
+    cache_dir: "./cache/huggingface"
+    max_cache_size: 2048  # MB
+    default_model: "mistralai/Mistral-7B-Instruct-v0.2"
+    
+  web:
+    enabled: true
+    max_requests: 100  # per minute
+    timeout: 30  # seconds
+    user_agent: "Sasha Meta Agent/1.0"
+    
+  system:
+    enabled: true
+    max_processes: 10
+    timeout: 60  # seconds
+    allowed_commands:
+      - "git"
+      - "npm"
+      - "pip"
+      - "python"
+      - "node"
+
+# Security Settings
+security:
+  encryption:
+    enabled: true
+    algorithm: "AES-256-GCM"
+    key_rotation: 86400  # 24 hours in seconds
+    
+  authentication:
+    enabled: true
+    method: "keyring"
+    session_timeout: 3600  # 1 hour in seconds
+    
+  credentials:
+    storage: "encrypted"
+    auto_save: true
+    max_age: 2592000  # 30 days in seconds
+
+# UI Settings
+ui:
+  theme: "dark"
+  font_size: 14
+  max_history: 1000
+  auto_scroll: true
+  emoji_enabled: true
+  markdown_enabled: true
+  code_highlighting: true
+
+# Logging Settings
+logging:
+  level: "INFO"
+  file: "sasha.log"
+  max_size: 10  # MB
+  backup_count: 5
+  format: "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+
+# Cache Settings
+cache:
+  enabled: true
+  max_size: 5120  # 5 GB
+  cleanup_interval: 3600  # 1 hour in seconds
+  directories:
+    models: "./cache/models"
+    repositories: "./cache/repositories"
+    downloads: "./cache/downloads"
+    temp: "./cache/temp"
+
+# Performance Settings
+performance:
+  max_threads: 8
+  max_memory: 4096  # MB
+  timeout: 300  # 5 minutes in seconds
+  retry_attempts: 3
+  retry_delay: 5  # seconds
+
+# Feature Flags
+features:
+  web_search: true
+  code_generation: true
+  image_generation: true
+  voice_generation: true
+  file_operations: true
+  system_commands: true
+  github_integration: true
+  huggingface_integration: true
+  credential_management: true
+  chat_history: true
+  screenshots: true
+  form_filling: true
+  web_scraping: true 

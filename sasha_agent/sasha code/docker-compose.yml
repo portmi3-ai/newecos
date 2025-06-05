@@ -1,0 +1,13 @@
+version: '3.8'
+
+services:
+  sasha:
+    build: .
+    ports:
+      - "8080:8080"
+    environment:
+      - GOOGLE_APPLICATION_CREDENTIALS=/app/config/credentials.json
+      - PROJECT_ID=${PROJECT_ID}
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+    volumes:
+      - .:/app

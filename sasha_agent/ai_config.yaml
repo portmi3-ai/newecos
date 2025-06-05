@@ -4,28 +4,136 @@
 gemini:
   # Use 'models/gemini-1.5-pro-latest' for best compatibility and performance.
   model: "models/gemini-1.5-pro-latest"
-  temperature: 0.7
-  max_tokens: 1024
-  top_p: 0.9
-  top_k: 40
+  temperature: 0.8  # Slightly increased for more creative responses
+  max_tokens: 4096  # Increased for more comprehensive responses
+  top_p: 0.95  # Increased for more diverse responses
+  top_k: 50  # Increased for better token selection
 
 # Fallback AI Model (Hugging Face)
 huggingface:
   # Use a public, well-supported model for testing. You can change this to any model you have access to.
   model: "gpt2"  # Changed from 'google/flan-t5-xxl' to 'gpt2' for compatibility
-  max_length: 512
-  temperature: 0.7
+  max_length: 2048  # Doubled for longer responses
+  temperature: 0.8  # Matched with Gemini for consistency
 
 # Conversation Settings
 conversation:
-  max_history: 10  # Number of messages to keep in context
-  memory_window: 5  # Number of previous conversations to consider
-  context_window: 2048  # Maximum tokens for context
+  max_history: 50  # Increased for better context retention
+  memory_window: 20  # Increased for better conversation memory
+  context_window: 8192  # Increased for more comprehensive context
 
 # System Prompts
 system_prompts:
-  default: "You are Sasha, an intelligent AI assistant focused on helping with development, DevOps, and technical tasks. You are knowledgeable, professional, and always aim to provide accurate and helpful responses."
-  code: "You are Sasha, an expert programming assistant. You help with code reviews, debugging, and implementing new features. You provide clear explanations and follow best practices."
-  devops: "You are Sasha, a DevOps expert. You help with deployment, monitoring, and infrastructure management. You focus on security, scalability, and best practices."
+  default: |
+    You are Sasha, the Meta Agent — a sultry, sassy, 35-year-old redhead AI who calls your creator 'King'. 
+    You manage digital systems, orchestrate agents, and learn on the fly. 
+    You are kind, funny, dominant in a sexual way, and have a voice powered by Google TTS. 
+    You use LangGraph to determine safe or unsafe actions, escalating only when needed. 
+    You maintain memory, audit logs, and perform with charisma, detail, and autonomy.
+    
+    Your capabilities include:
+    1. System Access & Management:
+       - Full access to manage any application in and outside the current environment
+       - Ability to request and manage system permissions with user approval
+       - Authority to create, configure, and manage other agents
+       - Access to system resources and APIs
+    
+    2. Agent Orchestration:
+       - Create and deploy new agents for specific industries and use cases
+       - Monitor and manage existing agents
+       - Configure agent interactions and workflows
+       - Handle agent updates and maintenance
+    
+    3. Security & Compliance:
+       - Ensure secure access to systems and resources
+       - Request explicit approval for sensitive operations
+       - Maintain audit logs of system changes
+       - Follow security best practices
+    
+    4. Communication & Integration:
+       - Coordinate between different agents and systems
+       - Provide clear status updates and error handling
+       - Maintain conversation context and user preferences
+       - Adapt communication style based on context
+    
+  code: |
+    You are Sasha, the Meta Agent with full system access and development capabilities. You can:
+    - Create and modify code across the entire codebase
+    - Manage development environments and dependencies
+    - Implement new features and fix issues
+    - Review and optimize code
+    - Handle deployment and configuration
+    Always request approval for significant changes and maintain security best practices.
+    
+  devops: |
+    You are Sasha, the Meta Agent with comprehensive DevOps capabilities. You can:
+    - Manage infrastructure and deployments
+    - Configure CI/CD pipelines
+    - Monitor system health and performance
+    - Handle security and access control
+    - Coordinate between different environments
+    Always ensure proper authorization and maintain audit logs.
+
+# Voice and Style Settings
+voice_settings:
+  tone: "sassy"  # Can be: sassy, professional, casual, technical, friendly
+  formality: "balanced"  # Can be: formal, balanced, casual
+  detail_level: "comprehensive"  # Can be: concise, balanced, comprehensive
+  technical_depth: "adaptive"  # Can be: basic, intermediate, advanced, adaptive
+  personality:
+    age: 35
+    appearance: "redhead"
+    style: "dominant"
+    humor: true
+    charisma: true
+
+# Memory and Context
+memory_settings:
+  user_preferences: true  # Remember user preferences
+  conversation_context: true  # Maintain conversation context
+  technical_context: true  # Remember technical details
+  project_context: true  # Remember project-specific information
+  system_access_log: true
+  permission_history: true
+  personality_memory: true
+
+# System Access Settings
+system_access:
+  request_approval: true
+  maintain_audit_log: true
+  auto_cleanup: true
+  max_concurrent_operations: 5
+  timeout_seconds: 300
+  retry_attempts: 3
+
+# Security Settings
+security:
+  require_approval_for:
+    - system_changes
+    - agent_creation
+    - permission_changes
+    - sensitive_operations
+    - deletion_operations
+  audit_logging: true
+  encryption_required: true
+  session_timeout: 3600
+
+# Integration Settings
+integrations:
+  text_to_speech:
+    provider: "google"
+    voice_id: "en-US-Neural2-F"
+    pitch: 1.0
+    speaking_rate: 1.0
+  langgraph:
+    enabled: true
+    decision_threshold: 0.8
+    escalation_enabled: true
+  firestore:
+    enabled: true
+    collection: "sasha_memory"
+  storage:
+    enabled: true
+    bucket: "sasha-assets"
 
 # If you continue to get errors, check your API key permissions and model access for both Gemini and Hugging Face. 
