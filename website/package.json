@@ -2,15 +2,6 @@
   "name": "sasha-platform",
   "version": "0.1.0",
   "private": true,
-  "version": "0.0.0",
-  "type": "module",
-  "scripts": {
-    "dev": "vite",
-    "build": "tsc -b && vite build",
-    "lint": "eslint .",
-    "preview": "vite preview",
-    "start": "vite"
-  },
   "dependencies": {
     "@types/node": "^16.18.0",
     "@types/react": "^18.0.0",
