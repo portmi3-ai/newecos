@@ -1,58 +1,22 @@
 import { useState, useEffect } from 'react';
 import { 
-  getAuth, 
-  onAuthStateChanged, 
+  User,
   signInWithEmailAndPassword,
   createUserWithEmailAndPassword,
   signOut,
-  User
+  onAuthStateChanged
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
-import { db } from '../config/firebase';
-
-interface AuthState {
-  user: User | null;
-  loading: boolean;
-  error: string | null;
-}
+import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { auth, db } from '../config/firebase';
 
 export const useAuth = () => {
-  const [authState, setAuthState] = useState<AuthState>({
-    user: null,
-    loading: true,
-    error: null
-  });
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const auth = getAuth();
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
-      if (user) {
-        // Get user settings from Firestore
-        try {
-          const userDoc = await getDoc(doc(db, 'users', user.uid));
-          if (!userDoc.exists()) {
-            // Create user document if it doesn't exist
-            await setDoc(doc(db, 'users', user.uid), {
-              email: user.email,
-              displayName: user.displayName || '',
-              createdAt: new Date(),
-              settings: {
-                theme: 'dark',
-                language: 'en',
-                notifications: true
-              }
-            });
-          }
-        } catch (error) {
-          console.error('Error fetching user data:', error);
-        }
-      }
-      
-      setAuthState({
-        user,
-        loading: false,
-        error: null
-      });
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      setUser(user);
+      setLoading(false);
     });
 
     return () => unsubscribe();
@@ -60,59 +24,45 @@ export const useAuth = () => {
 
   const login = async (email: string, password: string) => {
     try {
-      const auth = getAuth();
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      return userCredential.user;
     } catch (error) {
-      setAuthState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'An error occurred'
-      }));
       throw error;
     }
   };
 
   const signup = async (email: string, password: string) => {
     try {
-      const auth = getAuth();
-      const { user } = await createUserWithEmailAndPassword(auth, email, password);
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
       
-      // Create user document in Firestore
-      await setDoc(doc(db, 'users', user.uid), {
+      // Create user settings document
+      await setDoc(doc(db, 'user_settings', user.uid), {
         email: user.email,
-        displayName: user.displayName || '',
-        createdAt: new Date(),
-        settings: {
-          theme: 'dark',
-          language: 'en',
+        createdAt: new Date().toISOString(),
+        preferences: {
+          theme: 'light',
           notifications: true
         }
       });
+
+      return user;
     } catch (error) {
-      setAuthState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'An error occurred'
-      }));
       throw error;
     }
   };
 
   const logout = async () => {
     try {
-      const auth = getAuth();
       await signOut(auth);
     } catch (error) {
-      setAuthState(prev => ({
-        ...prev,
-        error: error instanceof Error ? error.message : 'An error occurred'
-      }));
       throw error;
     }
   };
 
   return {
-    user: authState.user,
-    loading: authState.loading,
-    error: authState.error,
+    user,
+    loading,
     login,
     signup,
     logout

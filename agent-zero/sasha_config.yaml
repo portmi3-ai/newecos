@@ -1,0 +1,47 @@
+# Sasha Meta Agent Master Configuration
+
+storage:
+  local_root: "D:\\.aGITHUB REPO\\Queen"
+  logs: "D:\\.aGITHUB REPO\\Queen\\logs"
+  cache: "D:\\.aGITHUB REPO\\Queen\\cache"
+  secrets: "D:\\.aGITHUB REPO\\Queen\\secrets"
+  models: "D:\\.aGITHUB REPO\\Queen\\models"
+
+gcp:
+  project_id: "mp135595"
+  service_account: "sasha-meta-agent@mp135595.iam.gserviceaccount.com"
+  secret_manager: true
+
+logging:
+  log_file: "D:\\.aGITHUB REPO\\Queen\\logs\\sasha_log.txt"
+  log_level: "INFO"
+  rotate: true
+  max_size_mb: 10
+  backup_count: 5
+
+secrets:
+  managed: [
+    "FIREBASE_API_KEY",
+    "FIREBASE_AUTH_DOMAIN",
+    "FIREBASE_PROJECT_ID",
+    "FIREBASE_STORAGE_BUCKET",
+    "FIREBASE_MESSAGING_SENDER_ID",
+    "FIREBASE_APP_ID",
+    "FIREBASE_MEASUREMENT_ID",
+    "GOOGLE_API_KEY",
+    "OPENAI_API_KEY",
+    "HUGGINGFACE_API_KEY",
+    "ANTHROPIC_API_KEY",
+    "MISTRAL_API_KEY",
+    "GROQ_API_KEY",
+    "TOGETHER_API_KEY",
+    "REPLICATE_API_KEY",
+    "STABILITY_API_KEY",
+    "ELEVENLABS_API_KEY"
+  ]
+
+models:
+  local_dir: "D:\\.aGITHUB REPO\\Queen\\models"
+  cache_dir: "D:\\.aGITHUB REPO\\Queen\\cache"
+  auto_download: true
+  auto_update: true 
