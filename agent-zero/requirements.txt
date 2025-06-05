@@ -77,4 +77,5 @@ wave>=0.0.2
 
 # System tray and settings management
 pyinstaller>=6.3.0
-winreg>=0.0.1 
+winreg>=0.0.1
+pywin32>=306 
