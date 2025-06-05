@@ -6,74 +6,83 @@ import { useAuth } from '../../hooks/useAuth';
 
 interface Message {
   id: string;
-  content: string;
-  role: 'user' | 'assistant';
-  timestamp: any;
+  text: string;
+  sender: 'user' | 'assistant';
+  timestamp: Date;
 }
 
 export const SashaChat: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
-  const [isLoading, setIsLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { user } = useAuth();
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const { user, loading: authLoading } = useAuth();
 
   useEffect(() => {
     if (!user) return;
 
     const q = query(
-      collection(db, 'sasha_conversations'),
+      collection(db, `users/${user.uid}/conversations`),
       orderBy('timestamp', 'asc')
     );
 
     const unsubscribe = onSnapshot(q, (snapshot) => {
       const newMessages = snapshot.docs.map(doc => ({
         id: doc.id,
-        ...doc.data()
+        ...doc.data(),
+        timestamp: doc.data().timestamp?.toDate()
       })) as Message[];
       setMessages(newMessages);
-      scrollToBottom();
     });
 
     return () => unsubscribe();
   }, [user]);
 
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!input.trim() || !user) return;
 
-    setIsLoading(true);
+    setLoading(true);
     try {
       // Add user message
-      await addDoc(collection(db, 'sasha_conversations'), {
-        content: input,
-        role: 'user',
-        userId: user.uid,
+      await addDoc(collection(db, `users/${user.uid}/conversations`), {
+        text: input,
+        sender: 'user',
         timestamp: serverTimestamp()
       });
 
-      // TODO: Call Sasha's API here to get response
-      // For now, we'll simulate a response
+      // Simulate assistant response (replace with actual AI integration)
       setTimeout(async () => {
-        await addDoc(collection(db, 'sasha_conversations'), {
-          content: "I'm processing your request...",
-          role: 'assistant',
-          userId: user.uid,
+        await addDoc(collection(db, `users/${user.uid}/conversations`), {
+          text: "I'm processing your request...",
+          sender: 'assistant',
           timestamp: serverTimestamp()
         });
-        setIsLoading(false);
       }, 1000);
 
       setInput('');
     } catch (error) {
       console.error('Error sending message:', error);
-      setIsLoading(false);
+    } finally {
+      setLoading(false);
     }
   };
+
+  if (authLoading) {
+    return <div className="flex items-center justify-center h-full">Loading...</div>;
+  }
+
+  if (!user) {
+    return <div className="flex items-center justify-center h-full">Please log in to chat with Sasha</div>;
+  }
 
   return (
     <div className="flex flex-col h-full w-full bg-[#18191A] rounded-xl shadow-lg p-4">
@@ -82,17 +91,17 @@ export const SashaChat: React.FC = () => {
           <div
             key={message.id}
             className={`flex ${
-              message.role === 'user' ? 'justify-end' : 'justify-start'
+              message.sender === 'user' ? 'justify-end' : 'justify-start'
             }`}
           >
             <div
               className={`px-4 py-2 rounded-2xl max-w-[70%] ${
-                message.role === 'user'
+                message.sender === 'user'
                   ? 'bg-primary-600 text-white'
                   : 'bg-gray-800 text-gray-100'
               }`}
             >
-              {message.content}
+              {message.text}
             </div>
           </div>
         ))}
@@ -109,7 +118,7 @@ export const SashaChat: React.FC = () => {
             onChange={(e) => setInput(e.target.value)}
             placeholder="Ask Gemini"
             className="flex-1 bg-transparent outline-none text-white placeholder-gray-400 px-2"
-            disabled={isLoading}
+            disabled={loading}
           />
         </form>
         <span className="ml-2 text-gray-400 cursor-pointer"><Mic size={20} /></span>
@@ -117,9 +126,9 @@ export const SashaChat: React.FC = () => {
           className="ml-2 px-3 py-1 rounded-lg bg-primary-600 text-white font-semibold disabled:opacity-50"
           type="submit"
           form="sasha-chat-form"
-          disabled={isLoading || !input.trim()}
+          disabled={loading || !input.trim()}
         >
-          {isLoading ? 'Sending...' : 'Send'}
+          {loading ? 'Sending...' : 'Send'}
         </button>
       </div>
     </div>

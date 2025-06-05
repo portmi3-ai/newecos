@@ -594,7 +594,7 @@ class AgentGUI(QMainWindow):
                 QMessageBox.critical(self, "Error", f"Could not initialize model: {str(e)}")
     
     def send_message(self):
-        message = self.input_field.text().strip()
+        message = self.input_field.toPlainText().strip()
         if not message:
             return
 

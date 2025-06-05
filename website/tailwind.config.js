@@ -11,6 +11,7 @@ module.exports = {
     'mb-4',
     'rounded'
   ],
+  darkMode: 'media',
   theme: {
     extend: {
       colors: {
@@ -21,11 +22,10 @@ module.exports = {
           300: '#7dd3fc',
           400: '#38bdf8',
           500: '#0ea5e9',
-          600: '#1a365d', // Deep blue
-          700: '#0c4a6e',
+          600: '#0284c7',
+          700: '#0369a1',
           800: '#075985',
           900: '#0c4a6e',
-          950: '#082f49',
         },
         secondary: {
           50: '#f0fdfa',
