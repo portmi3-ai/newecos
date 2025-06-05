@@ -4,14 +4,15 @@ import { getFirestore, collection, doc, getDoc, setDoc, updateDoc } from 'fireba
 import { getStorage } from 'firebase/storage';
 import { getAnalytics } from 'firebase/analytics';
 
+// Firebase configuration for newecos project
 const firebaseConfig = {
-  apiKey: "AIzaSyBy_hCQPM5qsfo7ggxPY2XhUXPTiCLaqV0",
-  authDomain: "apex-wildlife-watch.firebaseapp.com",
-  projectId: "apex-wildlife-watch",
-  storageBucket: "apex-wildlife-watch.firebasestorage.app",
-  messagingSenderId: "1041831140002",
-  appId: "1:1041831140002:web:a4038f25598024288e55fb",
-  measurementId: "G-57RC4PQ32W"
+  apiKey: process.env.VITE_FIREBASE_API_KEY,
+  authDomain: "newecos-ai.firebaseapp.com",
+  projectId: "newecos-ai",
+  storageBucket: "newecos-ai.appspot.com",
+  messagingSenderId: process.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+  appId: process.env.VITE_FIREBASE_APP_ID,
+  measurementId: process.env.VITE_FIREBASE_MEASUREMENT_ID
 };
 
 // Initialize Firebase
@@ -23,28 +24,65 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 export const analytics = getAnalytics(app);
 
-// Sasha-specific collections
-const SashaCollections = {
-  AGENTS: 'agents',
-  CONVERSATIONS: 'conversations',
-  SETTINGS: 'settings',
-  MEMORY: 'memory',
-  ACTIONS: 'actions'
-};
+// Sasha-specific collections with proper typing
+export interface SashaAgent {
+  id: string;
+  name: string;
+  status: 'active' | 'inactive';
+  capabilities: string[];
+  lastActive: string;
+}
 
-// Helper functions to interact with existing collections
-export const getSashaAgent = async (agentId: string) => {
+export interface SashaConversation {
+  id: string;
+  agentId: string;
+  messages: Array<{
+    role: 'user' | 'assistant';
+    content: string;
+    timestamp: string;
+  }>;
+  context: Record<string, any>;
+}
+
+export interface SashaSettings {
+  userId: string;
+  preferences: {
+    theme: 'light' | 'dark';
+    notifications: boolean;
+    language: string;
+  };
+  integrations: {
+    github: boolean;
+    huggingface: boolean;
+    google: boolean;
+  };
+}
+
+// Collection names
+export const SashaCollections = {
+  AGENTS: 'sasha_agents',
+  CONVERSATIONS: 'sasha_conversations',
+  SETTINGS: 'sasha_settings',
+  MEMORY: 'sasha_memory',
+  ACTIONS: 'sasha_actions'
+} as const;
+
+// Helper functions with proper typing
+export const getSashaAgent = async (agentId: string): Promise<SashaAgent | null> => {
   const docRef = doc(db, SashaCollections.AGENTS, agentId);
   const docSnap = await getDoc(docRef);
-  return docSnap.exists() ? docSnap.data() : null;
+  return docSnap.exists() ? (docSnap.data() as SashaAgent) : null;
 };
 
-export const updateSashaSettings = async (userId: string, settings: any) => {
+export const updateSashaSettings = async (userId: string, settings: Partial<SashaSettings>): Promise<void> => {
   const docRef = doc(db, SashaCollections.SETTINGS, userId);
-  await setDoc(docRef, settings, { merge: true });
+  await setDoc(docRef, {
+    ...settings,
+    lastUpdated: new Date().toISOString()
+  }, { merge: true });
 };
 
-export const saveConversation = async (conversationId: string, data: any) => {
+export const saveConversation = async (conversationId: string, data: Partial<SashaConversation>): Promise<void> => {
   const docRef = doc(db, SashaCollections.CONVERSATIONS, conversationId);
   await setDoc(docRef, {
     ...data,
@@ -52,7 +90,7 @@ export const saveConversation = async (conversationId: string, data: any) => {
   }, { merge: true });
 };
 
-export const updateAgentMemory = async (agentId: string, memoryData: any) => {
+export const updateAgentMemory = async (agentId: string, memoryData: Record<string, any>): Promise<void> => {
   const docRef = doc(db, SashaCollections.MEMORY, agentId);
   await updateDoc(docRef, {
     ...memoryData,
@@ -60,7 +98,11 @@ export const updateAgentMemory = async (agentId: string, memoryData: any) => {
   });
 };
 
-export const logAgentAction = async (agentId: string, action: any) => {
+export const logAgentAction = async (agentId: string, action: {
+  type: string;
+  details: Record<string, any>;
+  status: 'success' | 'failure' | 'pending';
+}): Promise<void> => {
   const docRef = doc(db, SashaCollections.ACTIONS, `${agentId}_${Date.now()}`);
   await setDoc(docRef, {
     ...action,

@@ -1,66 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { auth, db } from '../config/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { doc, getDoc } from 'firebase/firestore';
 import { onAuthStateChanged } from 'firebase/auth';
-import SashaChat from '../components/agents/SashaChat';
+import { SashaChat } from '../components/agents/SashaChat';
+import { GoogleAIPanel } from '../components/panels/GoogleAIPanel';
+import { HuggingFacePanel } from '../components/panels/HuggingFacePanel';
+import { GitHubPanel } from '../components/panels/GitHubPanel';
+import { FirebaseTest } from '../components/FirebaseTest';
 
-// Placeholder panel components
-const GoogleAIPanel: React.FC = () => (
-  <div className="p-4 bg-[#232526] text-white rounded-lg shadow-lg">
-    <h3 className="text-xl font-bold mb-2">Google AI</h3>
-    <p>Manage Gemini, TTS, Vision, and other Google AI integrations.</p>
-  </div>
-);
-
-const HuggingFacePanel: React.FC = () => (
-  <div className="p-4 bg-[#232526] text-white rounded-lg shadow-lg">
-    <h3 className="text-xl font-bold mb-2">Hugging Face</h3>
-    <p>Search models, manage embeddings, and view memory.</p>
-  </div>
-);
-
-const GitHubPanel: React.FC = () => (
-  <div className="p-4 bg-[#232526] text-white rounded-lg shadow-lg">
-    <h3 className="text-xl font-bold mb-2">GitHub</h3>
-    <p>Search repositories, manage code, and trigger actions.</p>
-  </div>
-);
-
-const SettingsPanel: React.FC = () => (
-  <div className="p-4 bg-[#232526] text-white rounded-lg shadow-lg">
-    <h3 className="text-xl font-bold mb-2">Settings</h3>
-    <p>Manage credentials, environment variables, and runtime flags.</p>
-  </div>
-);
-
-const SashaDashboard: React.FC = () => {
-  const [activePanel, setActivePanel] = useState<string | null>(null);
+export const SashaDashboard: React.FC = () => {
+  const [activePanel, setActivePanel] = useState<string>('chat');
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (user) => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       if (user) {
-        setUser(user);
-        // Fetch user's Sasha settings from Firestore
-        const fetchUserSettings = async () => {
-          try {
-            const settingsRef = collection(db, 'sasha_settings');
-            const q = query(settingsRef, where('userId', '==', user.uid));
-            const querySnapshot = await getDocs(q);
-            if (!querySnapshot.empty) {
-              // Handle user settings
-              console.log('User settings:', querySnapshot.docs[0].data());
-            }
-          } catch (error) {
-            console.error('Error fetching user settings:', error);
-          }
-        };
-        fetchUserSettings();
+        const userDoc = await getDoc(doc(db, 'sasha_settings', user.uid));
+        setUser({
+          ...user,
+          settings: userDoc.exists() ? userDoc.data() : {}
+        });
       } else {
-        // Redirect to login if not authenticated
+        setUser(null);
         navigate('/login');
       }
       setLoading(false);
@@ -69,65 +33,84 @@ const SashaDashboard: React.FC = () => {
     return () => unsubscribe();
   }, [navigate]);
 
-  const renderPanel = () => {
-    if (loading) {
-      return <div className="text-white">Loading...</div>;
-    }
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
+  const renderPanel = () => {
     switch (activePanel) {
-      case 'google-ai':
+      case 'chat':
+        return <SashaChat />;
+      case 'google':
         return <GoogleAIPanel />;
       case 'huggingface':
         return <HuggingFacePanel />;
       case 'github':
         return <GitHubPanel />;
-      case 'settings':
-        return <SettingsPanel />;
       default:
-        return (
-          <div className="w-full max-w-2xl h-[80vh]">
-            <SashaChat />
-          </div>
-        );
+        return <SashaChat />;
     }
   };
 
   return (
-    <div className="flex h-screen bg-[#18191A]">
+    <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-[#232526] text-white flex flex-col p-4 border-r border-[#333]">
-        <h2 className="text-xl font-bold mb-6">Sasha Dashboard</h2>
-        <nav className="flex-1">
-          <ul className="space-y-4">
-            <li className="hover:text-primary-400 cursor-pointer" onClick={() => setActivePanel('google-ai')}>Google AI</li>
-            <li className="hover:text-primary-400 cursor-pointer" onClick={() => setActivePanel('huggingface')}>Hugging Face</li>
-            <li className="hover:text-primary-400 cursor-pointer" onClick={() => setActivePanel('github')}>GitHub</li>
-            <li className="hover:text-primary-400 cursor-pointer" onClick={() => setActivePanel('settings')}>Settings</li>
-          </ul>
+      <div className="w-64 bg-white shadow-lg">
+        <div className="p-4">
+          <h2 className="text-xl font-bold mb-4">Sasha Dashboard</h2>
+          {user && (
+            <div className="mb-4">
+              <p className="text-sm text-gray-600">Logged in as:</p>
+              <p className="font-medium">{user.email || 'Anonymous'}</p>
+            </div>
+          )}
+        </div>
+        <nav className="mt-4">
+          <button
+            onClick={() => setActivePanel('chat')}
+            className={`w-full text-left px-4 py-2 ${
+              activePanel === 'chat' ? 'bg-blue-50 text-blue-600' : 'text-gray-600'
+            }`}
+          >
+            Chat
+          </button>
+          <button
+            onClick={() => setActivePanel('google')}
+            className={`w-full text-left px-4 py-2 ${
+              activePanel === 'google' ? 'bg-blue-50 text-blue-600' : 'text-gray-600'
+            }`}
+          >
+            Google AI
+          </button>
+          <button
+            onClick={() => setActivePanel('huggingface')}
+            className={`w-full text-left px-4 py-2 ${
+              activePanel === 'huggingface' ? 'bg-blue-50 text-blue-600' : 'text-gray-600'
+            }`}
+          >
+            Hugging Face
+          </button>
+          <button
+            onClick={() => setActivePanel('github')}
+            className={`w-full text-left px-4 py-2 ${
+              activePanel === 'github' ? 'bg-blue-50 text-blue-600' : 'text-gray-600'
+            }`}
+          >
+            GitHub
+          </button>
         </nav>
-        <div className="mt-8 text-xs text-gray-400">
-          <div>Meta Agent v1.0</div>
-          {user && <div className="mt-2">Logged in as: {user.email}</div>}
-        </div>
-      </aside>
+      </div>
+
       {/* Main Content */}
-      <main className="flex-1 flex flex-col">
-        {/* Top Status Panel */}
-        <div className="bg-[#232526] text-white p-4 border-b border-[#333] flex items-center justify-between">
-          <div>
-            <span className="font-semibold">System Health:</span> <span className="text-green-400">All Systems Operational</span>
-          </div>
-          <div className="text-xs text-gray-400">
-            {user ? `User: ${user.email}` : 'Not logged in'}
-          </div>
+      <div className="flex-1 p-6">
+        <div className="mb-6">
+          <FirebaseTest />
         </div>
-        {/* Panel or Chat */}
-        <div className="flex-1 flex items-center justify-center p-4">
+        
+        <div className="bg-white rounded-lg shadow p-4">
           {renderPanel()}
         </div>
-      </main>
+      </div>
     </div>
   );
-};
-
-export default SashaDashboard; 
+}; 
