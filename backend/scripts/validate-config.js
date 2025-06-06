@@ -1,7 +1,7 @@
 import { fileURLToPath } from 'url';
 import path from 'path';
 import fs from 'fs';
-import config from '../config/environment.js';
+import { loadConfig } from '../config/environment.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -22,62 +22,66 @@ const requiredFields = {
   monitoring: ['enabled', 'projectId']
 };
 
-// Validate configuration
-function validateConfig() {
-  const errors = [];
-  const warnings = [];
+async function validateConfig() {
+  try {
+    const config = await loadConfig();
+    
+    // Check for required fields
+    const requiredFields = [
+      'server.port',
+      'server.env',
+      'database.uri',
+      'firebase.projectId',
+      'auth0.audience',
+      'auth0.issuerBaseURL',
+      'vertexAi.projectId',
+      'vertexAi.location',
+      'github.token',
+      'huggingface.apiKey'
+    ];
 
-  // Check required fields
-  for (const [section, fields] of Object.entries(requiredFields)) {
-    if (!config[section]) {
-      errors.push(`Missing configuration section: ${section}`);
-      continue;
-    }
-
-    for (const field of fields) {
-      if (!config[section][field]) {
-        errors.push(`Missing required field: ${section}.${field}`);
+    const missingFields = [];
+    for (const field of requiredFields) {
+      const value = field.split('.').reduce((obj, key) => obj?.[key], config);
+      if (!value) {
+        missingFields.push(field);
       }
     }
-  }
 
-  // Validate specific fields
-  if (config.server.port && (isNaN(config.server.port) || config.server.port < 1 || config.server.port > 65535)) {
-    errors.push('Invalid server port: must be between 1 and 65535');
-  }
-
-  if (config.security.rateLimitWindow && (isNaN(config.security.rateLimitWindow) || config.security.rateLimitWindow < 1)) {
-    errors.push('Invalid rate limit window: must be a positive number');
-  }
-
-  if (config.security.rateLimitMax && (isNaN(config.security.rateLimitMax) || config.security.rateLimitMax < 1)) {
-    errors.push('Invalid rate limit max: must be a positive number');
-  }
-
-  // Check for weak secrets
-  const weakSecrets = [
-    { field: 'github.token', value: config.github?.token },
-    { field: 'huggingface.apiKey', value: config.huggingface?.apiKey },
-    { field: 'firebase.apiKey', value: config.firebase?.apiKey }
-  ];
-
-  for (const { field, value } of weakSecrets) {
-    if (value && value.length < 32) {
-      warnings.push(`Weak secret detected in ${field}: should be at least 32 characters`);
+    if (missingFields.length > 0) {
+      console.error('Missing required configuration fields:');
+      missingFields.forEach(field => console.error(`- ${field}`));
+      process.exit(1);
     }
-  }
 
-  // Check environment-specific requirements
-  if (config.server.env === 'production') {
-    if (!config.monitoring.enabled) {
-      warnings.push('Monitoring is disabled in production environment');
-    }
-    if (config.logging.level === 'debug') {
-      warnings.push('Debug logging enabled in production environment');
-    }
-  }
+    // Check for weak secrets
+    const secretFields = [
+      'database.uri',
+      'firebase.apiKey',
+      'auth0.clientSecret',
+      'github.token',
+      'huggingface.apiKey'
+    ];
 
-  return { errors, warnings };
+    const weakSecrets = [];
+    for (const field of secretFields) {
+      const value = field.split('.').reduce((obj, key) => obj?.[key], config);
+      if (value && value.length < 32) {
+        weakSecrets.push(field);
+      }
+    }
+
+    if (weakSecrets.length > 0) {
+      console.warn('Warning: Weak secrets detected:');
+      weakSecrets.forEach(field => console.warn(`- ${field}`));
+    }
+
+    console.log('Configuration validation successful!');
+    process.exit(0);
+  } catch (error) {
+    console.error('Configuration validation failed:', error);
+    process.exit(1);
+  }
 }
 
 // Main execution
@@ -85,20 +89,7 @@ try {
   console.log('Validating configuration...');
   console.log(`Environment: ${config.server.env}`);
   
-  const { errors, warnings } = validateConfig();
-
-  if (errors.length > 0) {
-    console.error('\nConfiguration errors:');
-    errors.forEach(error => console.error(`❌ ${error}`));
-    process.exit(1);
-  }
-
-  if (warnings.length > 0) {
-    console.warn('\nConfiguration warnings:');
-    warnings.forEach(warning => console.warn(`⚠️ ${warning}`));
-  }
-
-  console.log('\n✅ Configuration validation successful');
+  await validateConfig();
 } catch (error) {
   console.error('Error validating configuration:', error);
   process.exit(1);

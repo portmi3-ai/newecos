@@ -1,136 +1,68 @@
 import dotenv from 'dotenv';
-import path from 'path';
 import { fileURLToPath } from 'url';
+import { dirname, join } from 'path';
+import { getSecret } from './secretManager.js';
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables based on NODE_ENV
 const env = process.env.NODE_ENV || 'development';
-const envPath = path.resolve(__dirname, `../.env.${env}`);
+const envPath = join(__dirname, `../.env.${env}`);
+dotenv.config({ path: envPath });
 
-if (env === 'development') {
-  dotenv.config({ path: path.resolve(__dirname, '../.env.development') });
-} else {
-  dotenv.config({ path: envPath });
+// Async function to load secrets
+export async function loadConfig() {
+  return {
+    server: {
+      host: process.env.HOST || 'localhost',
+      port: parseInt(process.env.PORT || '3000', 10),
+      env: env
+    },
+    database: {
+      uri: await getSecret('MONGODB_URI', process.env.MONGODB_URI || 'mongodb://localhost:27017/agent-ecos'),
+      options: {
+        useNewUrlParser: true,
+        useUnifiedTopology: true
+      }
+    },
+    auth0: {
+      audience: await getSecret('AUTH0_AUDIENCE', process.env.AUTH0_AUDIENCE),
+      issuerBaseUrl: await getSecret('AUTH0_ISSUER_BASE_URL', process.env.AUTH0_ISSUER_BASE_URL),
+      clientId: await getSecret('AUTH0_CLIENT_ID', process.env.AUTH0_CLIENT_ID)
+    },
+    vertexAi: {
+      projectId: await getSecret('VERTEX_AI_PROJECT_ID', process.env.VERTEX_AI_PROJECT_ID),
+      location: process.env.VERTEX_AI_LOCATION || 'us-central1'
+    },
+    logging: {
+      level: process.env.LOG_LEVEL || 'info',
+      format: process.env.LOG_FORMAT || 'json'
+    },
+    security: {
+      corsOrigin: process.env.CORS_ORIGIN || '*',
+      rateLimit: {
+        windowMs: 15 * 60 * 1000, // 15 minutes
+        max: 100 // limit each IP to 100 requests per windowMs
+      }
+    }
+  };
 }
-
-// Environment configuration
-const config = {
-  // Server configuration
-  server: {
-    port: process.env.PORT || 8080,
-    host: process.env.HOST || '0.0.0.0',
-    env,
-  },
-
-  // Database configuration
-  database: {
-    url: process.env.DATABASE_URL,
-    user: process.env.DATABASE_USER,
-    password: process.env.DATABASE_PASSWORD,
-    ssl: env === 'production',
-  },
-
-  // Redis configuration
-  redis: {
-    url: process.env.REDIS_URL,
-    password: process.env.REDIS_PASSWORD,
-  },
-
-  // Firebase configuration
-  firebase: {
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, '\n'),
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-  },
-
-  // Auth0 configuration
-  auth0: {
-    audience: process.env.AUTH0_AUDIENCE,
-    issuerBaseUrl: process.env.AUTH0_ISSUER_BASE_URL,
-    clientId: process.env.AUTH0_CLIENT_ID,
-    clientSecret: process.env.AUTH0_CLIENT_SECRET,
-  },
-
-  // Google Cloud configuration
-  google: {
-    projectId: process.env.GOOGLE_CLOUD_PROJECT,
-    location: process.env.GOOGLE_CLOUD_LOCATION || 'us-central1',
-    credentials: process.env.GOOGLE_APPLICATION_CREDENTIALS,
-  },
-
-  // Vertex AI configuration
-  vertex: {
-    projectId: process.env.VERTEX_AI_PROJECT_ID,
-    location: process.env.VERTEX_AI_LOCATION || 'us-central1',
-    apiEndpoint: process.env.VERTEX_AI_API_ENDPOINT || 'us-central1-aiplatform.googleapis.com',
-  },
-
-  // GitHub configuration
-  github: {
-    token: process.env.GITHUB_TOKEN,
-    repo: process.env.GITHUB_REPO,
-  },
-
-  // Hugging Face configuration
-  huggingface: {
-    apiKey: process.env.HUGGINGFACE_API_KEY,
-  },
-
-  // Logging configuration
-  logging: {
-    level: process.env.LOG_LEVEL || 'info',
-    format: process.env.LOG_FORMAT || 'json',
-  },
-
-  // Security configuration
-  security: {
-    jwtSecret: process.env.JWT_SECRET,
-    jwtExpiration: process.env.JWT_EXPIRATION || '24h',
-    corsOrigin: process.env.CORS_ORIGIN || '*',
-  },
-
-  // Monitoring configuration
-  monitoring: {
-    sentryDsn: process.env.SENTRY_DSN,
-    newRelicKey: process.env.NEW_RELIC_LICENSE_KEY,
-  },
-};
 
 // Validate required configuration
-function validateConfig() {
-  const requiredFields = {
-    database: ['url', 'user', 'password'],
-    firebase: ['projectId', 'privateKey', 'clientEmail'],
-    auth0: ['audience', 'issuerBaseUrl', 'clientId', 'clientSecret'],
-    google: ['projectId'],
-    vertex: ['projectId'],
-    github: ['token'],
-    huggingface: ['apiKey'],
-    security: ['jwtSecret'],
-  };
-
-  const missingFields = [];
-
-  Object.entries(requiredFields).forEach(([section, fields]) => {
-    fields.forEach(field => {
-      if (!config[section][field]) {
-        missingFields.push(`${section}.${field}`);
-      }
-    });
+export async function validateConfig(config) {
+  const requiredFields = [
+    'auth0.audience',
+    'auth0.issuerBaseUrl',
+    'auth0.clientId',
+    'vertexAi.projectId',
+    'database.uri'
+  ];
+  const missingFields = requiredFields.filter(field => {
+    const value = field.split('.').reduce((obj, key) => obj?.[key], config);
+    return !value;
   });
-
   if (missingFields.length > 0) {
-    throw new Error(
-      `Missing required configuration fields:\n${missingFields.join('\n')}\n\n` +
-      'Please check your environment variables and ensure all required fields are set.'
-    );
+    throw new Error(`Missing required configuration fields: ${missingFields.join(', ')}`);
   }
-}
-
-// Validate configuration in production
-if (env === 'production') {
-  validateConfig();
-}
-
-export default config; 
+} 

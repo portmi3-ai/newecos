@@ -5,9 +5,9 @@ import compression from 'compression';
 import { createServer } from 'http';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import config from './config/environment.js';
+import { loadConfig, validateConfig } from './config/environment.js';
 import { connectDB } from './config/database.js';
-import { wsManager } from './config/websocket.js';
+import { createWebSocketManager } from './config/websocket.js';
 import agentRoutes from './routes/agentRoutes.js';
 import deploymentRoutes from './routes/deploymentRoutes.js';
 import { Logging } from '@google-cloud/logging';
@@ -25,9 +25,6 @@ const app = express();
 // Create HTTP server for WebSocket support
 const server = createServer(app);
 
-// Initialize WebSocket server
-wsManager.initialize(server);
-
 // Middleware
 app.use(cors());
 app.use(helmet());
@@ -37,7 +34,7 @@ app.use(express.urlencoded({ extended: true }));
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', environment: config.server.env });
+  res.json({ status: 'ok', environment: process.env.NODE_ENV });
 });
 
 // API routes
@@ -57,7 +54,7 @@ app.use((err, req, res, next) => {
     message: 'Server error',
     error: err.message,
     stack: err.stack,
-    environment: config.server.env,
+    environment: process.env.NODE_ENV,
   });
   
   log.write(entry);
@@ -68,8 +65,14 @@ app.use((err, req, res, next) => {
 // Connect to database and start server
 const startServer = async () => {
   try {
-    await connectDB();
-    
+    const config = await loadConfig();
+    await validateConfig(config);
+    await connectDB(config);
+
+    // Initialize WebSocket manager with config
+    const wsManager = createWebSocketManager(config);
+    wsManager.initialize(server);
+
     server.listen(config.server.port, config.server.host, () => {
       console.log(`Server running on ${config.server.host}:${config.server.port}`);
       

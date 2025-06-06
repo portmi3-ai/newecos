@@ -47,7 +47,7 @@ const envTemplate = {
 };
 
 // Function to generate .env file
-function generateEnvFile(env: 'development' | 'staging' | 'production') {
+function generateEnvFile(env) {
   const websiteDir = path.resolve(__dirname, '../website');
   const envFile = path.join(websiteDir, `.env.${env}`);
   const existingEnvFile = path.join(websiteDir, `.env.${env}.local`);
@@ -76,7 +76,7 @@ function generateEnvFile(env: 'development' | 'staging' | 'production') {
 
 // Function to generate all environment files
 function generateAllEnvFiles() {
-  const environments = ['development', 'staging', 'production'] as const;
+  const environments = ['development', 'staging', 'production'];
   
   environments.forEach(env => {
     try {

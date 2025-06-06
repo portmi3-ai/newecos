@@ -1,191 +1,97 @@
 import { WebSocketServer } from 'ws';
 import { Logging } from '@google-cloud/logging';
-import config from './environment.js';
-
-const logging = new Logging();
-const log = logging.log('agentEcos-api');
 
 class WebSocketManager {
-  constructor() {
-    this.wss = null;
-    this.clients = new Map(); // Map of client connections
-    this.agentSubscriptions = new Map(); // Map of agent subscriptions
+  constructor(config) {
+    this.config = config;
+    this.clients = new Map(); // Map<agentId, Set<ws>>
+    this.logging = new Logging();
+    this.log = this.logging.log('agentEcos-api');
   }
 
   initialize(server) {
     this.wss = new WebSocketServer({ server });
-
     this.wss.on('connection', (ws, req) => {
-      const clientId = this.generateClientId();
-      this.clients.set(clientId, ws);
-
-      // Log connection
-      const metadata = {
-        resource: { type: 'global' },
-        severity: 'INFO',
-      };
-      
-      const entry = log.entry(metadata, {
-        message: 'WebSocket client connected',
-        clientId,
-        environment: config.server.env,
-      });
-      
-      log.write(entry);
-
-      ws.on('message', (message) => {
-        try {
-          const data = JSON.parse(message);
-          this.handleMessage(clientId, data);
-        } catch (error) {
-          console.error('Error handling WebSocket message:', error);
-          this.sendError(ws, 'Invalid message format');
-        }
-      });
-
-      ws.on('close', () => {
-        this.handleDisconnect(clientId);
-      });
-
-      ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
-        this.handleDisconnect(clientId);
-      });
+      ws.on('message', (message) => this.handleMessage(ws, message));
+      ws.on('close', () => this.handleDisconnect(ws));
+      ws.on('error', (err) => this.sendError(ws, err));
     });
+    console.log('WebSocket server initialized');
   }
 
-  generateClientId() {
-    return Math.random().toString(36).substring(2, 15);
-  }
-
-  handleMessage(clientId, data) {
-    const { type, agentId, sessionId } = data;
-
-    switch (type) {
-      case 'subscribe':
-        this.handleSubscribe(clientId, agentId, sessionId);
-        break;
-      case 'unsubscribe':
-        this.handleUnsubscribe(clientId, agentId);
-        break;
-      default:
-        this.sendError(this.clients.get(clientId), 'Unknown message type');
+  handleMessage(ws, message) {
+    try {
+      const data = JSON.parse(message);
+      if (data.type === 'subscribe' && data.agentId) {
+        this.handleSubscribe(ws, data.agentId);
+      } else if (data.type === 'unsubscribe' && data.agentId) {
+        this.handleUnsubscribe(ws, data.agentId);
+      }
+    } catch (err) {
+      this.sendError(ws, err);
     }
   }
 
-  handleSubscribe(clientId, agentId, sessionId) {
-    if (!this.agentSubscriptions.has(agentId)) {
-      this.agentSubscriptions.set(agentId, new Set());
+  handleSubscribe(ws, agentId) {
+    if (!this.clients.has(agentId)) {
+      this.clients.set(agentId, new Set());
     }
-
-    const subscriptions = this.agentSubscriptions.get(agentId);
-    subscriptions.add({
-      clientId,
-      sessionId,
-      ws: this.clients.get(clientId),
-    });
-
-    // Log subscription
-    const metadata = {
-      resource: { type: 'global' },
-      severity: 'INFO',
-    };
-    
-    const entry = log.entry(metadata, {
-      message: 'Client subscribed to agent',
-      clientId,
-      agentId,
-      sessionId,
-      environment: config.server.env,
-    });
-    
-    log.write(entry);
+    this.clients.get(agentId).add(ws);
+    this.logEvent('WebSocket client subscribed', { agentId });
   }
 
-  handleUnsubscribe(clientId, agentId) {
-    if (this.agentSubscriptions.has(agentId)) {
-      const subscriptions = this.agentSubscriptions.get(agentId);
-      subscriptions.forEach(sub => {
-        if (sub.clientId === clientId) {
-          subscriptions.delete(sub);
-        }
-      });
-
-      if (subscriptions.size === 0) {
-        this.agentSubscriptions.delete(agentId);
+  handleUnsubscribe(ws, agentId) {
+    if (this.clients.has(agentId)) {
+      this.clients.get(agentId).delete(ws);
+      if (this.clients.get(agentId).size === 0) {
+        this.clients.delete(agentId);
       }
     }
-
-    // Log unsubscription
-    const metadata = {
-      resource: { type: 'global' },
-      severity: 'INFO',
-    };
-    
-    const entry = log.entry(metadata, {
-      message: 'Client unsubscribed from agent',
-      clientId,
-      agentId,
-      environment: config.server.env,
-    });
-    
-    log.write(entry);
+    this.logEvent('WebSocket client unsubscribed', { agentId });
   }
 
-  handleDisconnect(clientId) {
-    // Remove client from all subscriptions
-    this.agentSubscriptions.forEach((subscriptions, agentId) => {
-      subscriptions.forEach(sub => {
-        if (sub.clientId === clientId) {
-          subscriptions.delete(sub);
-        }
-      });
-
-      if (subscriptions.size === 0) {
-        this.agentSubscriptions.delete(agentId);
+  handleDisconnect(ws) {
+    for (const [agentId, set] of this.clients.entries()) {
+      set.delete(ws);
+      if (set.size === 0) {
+        this.clients.delete(agentId);
       }
-    });
+    }
+    this.logEvent('WebSocket client disconnected', {});
+  }
 
-    // Remove client
-    this.clients.delete(clientId);
+  broadcastToAgent(agentId, data) {
+    if (this.clients.has(agentId)) {
+      for (const ws of this.clients.get(agentId)) {
+        if (ws.readyState === ws.OPEN) {
+          ws.send(JSON.stringify(data));
+        }
+      }
+    }
+  }
 
-    // Log disconnection
+  sendError(ws, err) {
+    ws.send(JSON.stringify({ type: 'error', error: err.message }));
+    this.logEvent('WebSocket error', { error: err.message });
+  }
+
+  logEvent(message, details) {
     const metadata = {
       resource: { type: 'global' },
       severity: 'INFO',
     };
-    
-    const entry = log.entry(metadata, {
-      message: 'WebSocket client disconnected',
-      clientId,
-      environment: config.server.env,
+    const entry = this.log.entry(metadata, {
+      message,
+      ...details,
+      environment: this.config?.server?.env,
     });
-    
-    log.write(entry);
-  }
-
-  broadcastToAgent(agentId, message) {
-    if (this.agentSubscriptions.has(agentId)) {
-      const subscriptions = this.agentSubscriptions.get(agentId);
-      subscriptions.forEach(sub => {
-        if (sub.ws.readyState === 1) { // Check if connection is open
-          sub.ws.send(JSON.stringify({
-            ...message,
-            sessionId: sub.sessionId,
-          }));
-        }
-      });
-    }
-  }
-
-  sendError(ws, message) {
-    if (ws.readyState === 1) {
-      ws.send(JSON.stringify({
-        type: 'error',
-        message,
-      }));
-    }
+    this.log.write(entry);
   }
 }
 
-export const wsManager = new WebSocketManager(); 
+let wsManager;
+export function createWebSocketManager(config) {
+  wsManager = new WebSocketManager(config);
+  return wsManager;
+}
+export { wsManager }; 

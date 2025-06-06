@@ -3,7 +3,7 @@ import { generateDeploymentConfig, AGENT_STATES, getAgentTopic, getAgentBucket }
 import { PubSub } from '@google-cloud/pubsub';
 import { Logging } from '@google-cloud/logging';
 import Agent from '../models/Agent.js';
-import config from '../config/environment.js';
+import { loadConfig } from '../config/environment.js';
 import { wsManager } from '../config/websocket.js';
 import { VertexAI } from '@google-cloud/vertexai';
 
@@ -12,10 +12,16 @@ const pubsub = new PubSub();
 const logging = new Logging();
 const log = logging.log('agentEcos-api');
 
+// Initialize config
+let config;
+(async () => {
+  config = await loadConfig();
+})();
+
 // Initialize Vertex AI
 const vertexAi = new VertexAI({
-  project: config.vertexAi.projectId,
-  location: config.vertexAi.location,
+  project: process.env.VERTEX_AI_PROJECT_ID,
+  location: process.env.VERTEX_AI_LOCATION || 'us-central1',
 });
 
 // Caching mechanisms for optimization
@@ -188,7 +194,7 @@ export const deployAgent = async (req, res) => {
       agentId: agent._id,
       name: agent.name,
       model: agent.model,
-      environment: config.server.env,
+      environment: config?.server?.env,
     });
     
     log.write(entry);
@@ -236,7 +242,7 @@ export const undeployAgent = async (req, res) => {
       message: 'Agent undeployed',
       agentId: agent._id,
       name: agent.name,
-      environment: config.server.env,
+      environment: config?.server?.env,
     });
     
     log.write(entry);
@@ -310,7 +316,7 @@ export const updateDeploymentConfig = async (req, res) => {
       message: 'Deployment configuration updated',
       agentId: agent._id,
       name: agent.name,
-      environment: config.server.env,
+      environment: config?.server?.env,
     });
     
     log.write(entry);

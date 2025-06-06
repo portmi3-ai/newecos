@@ -1,0 +1,27 @@
+# Environment files
+# .env*
+!.env.example
+
+# Secrets
+.secrets/
+
+# Dependencies
+node_modules/
+
+# Logs
+logs/
+*.log
+
+# Build output
+dist/
+build/
+
+# IDE files
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS files
+.DS_Store
+Thumbs.db

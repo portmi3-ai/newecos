@@ -4,11 +4,17 @@ import { v4 as uuidv4 } from 'uuid';
 import Agent from '../models/Agent.js';
 import Message from '../models/Message.js';
 import { Logging } from '@google-cloud/logging';
-import config from '../config/environment.js';
+import { loadConfig } from '../config/environment.js';
 import { wsManager } from '../config/websocket.js';
 
 const logging = new Logging();
 const log = logging.log('agentEcos-api');
+
+// Initialize config
+let config;
+(async () => {
+  config = await loadConfig();
+})();
 
 // Get all agent templates
 export const getAgentTemplates = async (req, res) => {
@@ -86,8 +92,8 @@ export const getAgents = async (req, res) => {
     const agents = await Agent.find({ createdBy: req.user.sub });
     res.json(agents);
   } catch (error) {
-    console.error('Error fetching agents:', error);
-    res.status(500).json({ error: 'Failed to fetch agents' });
+    console.error('Error getting agents:', error);
+    res.status(500).json({ error: 'Failed to get agents' });
   }
 };
 
@@ -105,22 +111,16 @@ export const getAgentById = async (req, res) => {
 
     res.json(agent);
   } catch (error) {
-    console.error('Error fetching agent:', error);
-    res.status(500).json({ error: 'Failed to fetch agent' });
+    console.error('Error getting agent:', error);
+    res.status(500).json({ error: 'Failed to get agent' });
   }
 };
 
 // Create new agent
 export const createAgent = async (req, res) => {
   try {
-    const { name, type, model, capabilities, configuration } = req.body;
-    
     const agent = new Agent({
-      name,
-      type,
-      model,
-      capabilities,
-      configuration,
+      ...req.body,
       createdBy: req.user.sub,
     });
 
@@ -141,8 +141,7 @@ export const createAgent = async (req, res) => {
       message: 'Agent created',
       agentId: agent._id,
       name: agent.name,
-      type: agent.type,
-      environment: config.server.env,
+      environment: config?.server?.env,
     });
     
     log.write(entry);
@@ -157,8 +156,6 @@ export const createAgent = async (req, res) => {
 // Update agent
 export const updateAgent = async (req, res) => {
   try {
-    const { name, type, model, capabilities, configuration, status } = req.body;
-    
     const agent = await Agent.findOne({
       _id: req.params.id,
       createdBy: req.user.sub,
@@ -168,15 +165,7 @@ export const updateAgent = async (req, res) => {
       return res.status(404).json({ error: 'Agent not found' });
     }
 
-    Object.assign(agent, {
-      name,
-      type,
-      model,
-      capabilities,
-      configuration,
-      status,
-    });
-
+    Object.assign(agent, req.body);
     await agent.save();
 
     // Broadcast agent update
@@ -194,8 +183,7 @@ export const updateAgent = async (req, res) => {
       message: 'Agent updated',
       agentId: agent._id,
       name: agent.name,
-      type: agent.type,
-      environment: config.server.env,
+      environment: config?.server?.env,
     });
     
     log.write(entry);
@@ -210,7 +198,7 @@ export const updateAgent = async (req, res) => {
 // Delete agent
 export const deleteAgent = async (req, res) => {
   try {
-    const agent = await Agent.findOneAndDelete({
+    const agent = await Agent.findOne({
       _id: req.params.id,
       createdBy: req.user.sub,
     });
@@ -218,6 +206,8 @@ export const deleteAgent = async (req, res) => {
     if (!agent) {
       return res.status(404).json({ error: 'Agent not found' });
     }
+
+    await agent.deleteOne();
 
     // Broadcast agent deletion
     wsManager.broadcastToAgent(agent._id, {
@@ -234,8 +224,7 @@ export const deleteAgent = async (req, res) => {
       message: 'Agent deleted',
       agentId: agent._id,
       name: agent.name,
-      type: agent.type,
-      environment: config.server.env,
+      environment: config?.server?.env,
     });
     
     log.write(entry);
@@ -533,7 +522,7 @@ export const sendMessage = async (req, res) => {
       messageId: message._id,
       sessionId,
       mode,
-      environment: config.server.env,
+      environment: config?.server?.env,
     });
     
     log.write(entry);
@@ -596,7 +585,7 @@ export const updateRelationships = async (req, res) => {
       message: 'Agent relationships updated',
       agentId: agent._id,
       relationships,
-      environment: config.server.env,
+      environment: config?.server?.env,
     });
     
     log.write(entry);

@@ -1,0 +1,43 @@
+version: '3.8'
+services:
+  mongo:
+    image: mongo:6.0
+    container_name: agentecos-mongo
+    restart: always
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo_data:/data/db
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: agentecos-backend
+    restart: always
+    environment:
+      - NODE_ENV=development
+      - MONGODB_URI=mongodb://mongo:27017/agentEcos
+    ports:
+      - '3000:3000'
+    depends_on:
+      - mongo
+
+  frontend:
+    build:
+      context: ./website
+      dockerfile: Dockerfile
+    container_name: agentecos-frontend
+    restart: always
+    environment:
+      - NODE_ENV=development
+    ports:
+      - '5173:5173'
+    depends_on:
+      - backend
+    volumes:
+      - ./website:/app
+      - /app/node_modules
+
+volumes:
+  mongo_data: 
