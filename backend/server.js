@@ -19,6 +19,8 @@ const __dirname = dirname(__filename);
 const logging = new Logging();
 const log = logging.log('agentEcos-api');
 
+console.log('DEBUG (top): process.env.VERTEX_AI_PROJECT_ID =', process.env.VERTEX_AI_PROJECT_ID);
+
 // Create Express app
 const app = express();
 
@@ -65,9 +67,13 @@ app.use((err, req, res, next) => {
 // Connect to database and start server
 const startServer = async () => {
   try {
+    console.log('Starting server: loading config...');
     const config = await loadConfig();
+    console.log('Config loaded:', config);
     await validateConfig(config);
+    console.log('Config validated. Connecting to DB...');
     await connectDB(config);
+    console.log('DB connected. Initializing WebSocket manager...');
 
     // Initialize WebSocket manager with config
     const wsManager = createWebSocketManager(config);

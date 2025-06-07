@@ -60,7 +60,7 @@ AUTH0_ISSUER_BASE_URL=https://your-tenant.auth0.com
 AUTH0_CLIENT_ID=your-client-id
 
 # Google Cloud Configuration
-VERTEX_AI_PROJECT_ID=your-project-id
+VERTEX_AI_PROJECT_ID=sasha-firebase-meta
 VERTEX_AI_LOCATION=us-central1
 
 # Logging
@@ -152,7 +152,7 @@ async function initSecrets() {
     console.log('Stored Auth0 secrets');
 
     // Store Google Cloud configuration
-    await storeSecret('VERTEX_AI_PROJECT_ID', 'your-project-id');
+    await storeSecret('VERTEX_AI_PROJECT_ID', 'sasha-firebase-meta');
     console.log('Stored Google Cloud secrets');
 
     console.log('Environment initialization complete!');
