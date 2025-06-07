@@ -15,13 +15,20 @@ services:
       dockerfile: Dockerfile
     container_name: agentecos-backend
     restart: always
+    env_file: .env
     environment:
       - NODE_ENV=development
       - MONGODB_URI=mongodb://mongo:27017/agentEcos
+      - ENCRYPTION_KEY=${ENCRYPTION_KEY}
+      - VERTEX_AI_PROJECT_ID=${VERTEX_AI_PROJECT_ID}
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
     ports:
       - '3000:3000'
     depends_on:
       - mongo
+    volumes:
+      - ./backend/.secrets:/app/.secrets
 
   frontend:
     build:

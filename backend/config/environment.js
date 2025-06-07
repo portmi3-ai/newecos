@@ -29,10 +29,10 @@ export async function loadConfig() {
     auth0: {
       audience: await getSecret('AUTH0_AUDIENCE', process.env.AUTH0_AUDIENCE),
       issuerBaseUrl: await getSecret('AUTH0_ISSUER_BASE_URL', process.env.AUTH0_ISSUER_BASE_URL),
-      clientId: await getSecret('AUTH0_CLIENT_ID', process.env.AUTH0_CLIENT_ID)
+      clientId: process.env.AUTH0_CLIENT_ID ? await getSecret('AUTH0_CLIENT_ID', process.env.AUTH0_CLIENT_ID) : undefined
     },
     vertexAi: {
-      projectId: await getSecret('VERTEX_AI_PROJECT_ID', process.env.VERTEX_AI_PROJECT_ID),
+      projectId: process.env.VERTEX_AI_PROJECT_ID ? await getSecret('VERTEX_AI_PROJECT_ID', process.env.VERTEX_AI_PROJECT_ID) : undefined,
       location: process.env.VERTEX_AI_LOCATION || 'us-central1'
     },
     logging: {
@@ -54,8 +54,8 @@ export async function validateConfig(config) {
   const requiredFields = [
     'auth0.audience',
     'auth0.issuerBaseUrl',
-    'auth0.clientId',
-    'vertexAi.projectId',
+    // 'auth0.clientId', // Make optional
+    // 'vertexAi.projectId', // Make optional
     'database.uri'
   ];
   const missingFields = requiredFields.filter(field => {

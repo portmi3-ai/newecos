@@ -15,7 +15,30 @@ if (!fs.existsSync(SECRETS_PATH)) {
 }
 
 // Encryption key (in production, this should be stored securely)
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || crypto.randomBytes(32);
+let ENCRYPTION_KEY;
+
+// Initialize encryption key
+function initializeEncryptionKey() {
+  if (process.env.ENCRYPTION_KEY) {
+    try {
+      // Try to parse the key as hex
+      const keyBuffer = Buffer.from(process.env.ENCRYPTION_KEY, 'hex');
+      if (keyBuffer.length === 32) {
+        ENCRYPTION_KEY = keyBuffer;
+        return;
+      }
+    } catch (error) {
+      console.warn('Invalid encryption key format, generating new key');
+    }
+  }
+  // Generate new key if none exists or if invalid
+  ENCRYPTION_KEY = crypto.randomBytes(32);
+  // Store the new key in hex format
+  process.env.ENCRYPTION_KEY = ENCRYPTION_KEY.toString('hex');
+}
+
+// Initialize the key
+initializeEncryptionKey();
 
 // Encrypt a value
 function encrypt(value) {
